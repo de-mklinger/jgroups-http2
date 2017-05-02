@@ -169,6 +169,11 @@
 	<build>
 		<pluginManagement>
 			<plugins>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-release-plugin</artifactId>
+					<version>2.5.3</version>
+				</plugin>
 				<!-- Use 'mvn license:format' at top of project to add missing headers -->
 				<plugin>
 					<groupId>com.mycila</groupId>
