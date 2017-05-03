@@ -159,7 +159,7 @@ public class HTTP extends TP implements HttpReceiver {
 					if (result.getFailure() instanceof ConnectException) {
 						LOG.info("Send to {}: Failed: {}", destIpAddress, result.getFailure().toString());
 					} else {
-						LOG.warn("Send to {}: Failed: {}", destIpAddress, result.getFailure());
+						LOG.warn("Send to {}: Failed:", destIpAddress, result.getFailure());
 					}
 					// TODO trigger SUSPECT here?
 				} else {
@@ -185,6 +185,10 @@ public class HTTP extends TP implements HttpReceiver {
 		sb.append(destIpAddress.getPort());
 		sb.append(servicePath);
 		return sb.toString();
+	}
+
+	public HttpClient getClient() {
+		return client;
 	}
 
 	@Override
