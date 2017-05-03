@@ -99,6 +99,7 @@ public class JGroupsServlet extends HttpServlet {
 			throw new ServletException("Error creating channel using '" + jchannelProps + "'", e);
 		}
 		getServletContext().setAttribute(CHANNEL_ATTRIBUTE, this.channel);
+		onChannelCreated(this.channel);
 
 		final HTTP httpProtocol = (HTTP) channel.getProtocolStack().getTransport();
 		httpProtocol.setExternalAddress(externalAddress);
@@ -109,8 +110,9 @@ public class JGroupsServlet extends HttpServlet {
 		ForkJoinPool.commonPool().execute(() -> {
 			try {
 				channel.connect(clusterName);
+				onChannelConnected(channel, clusterName);
 			} catch (final Exception e) {
-				LOG.error("Error connecting to cluster '" + clusterName + "'", e);
+				onChannelConnectError(channel, clusterName, e);
 			}
 		});
 	}
@@ -153,5 +155,24 @@ public class JGroupsServlet extends HttpServlet {
 		} catch (final BadRequestException e) {
 			response.sendError(HttpServletResponse.SC_BAD_REQUEST, e.toString());
 		}
+	}
+
+	/**
+	 * Callback method for sub-classes. Default implementation does nothing.
+	 */
+	protected void onChannelCreated(final JChannel channel) {
+	}
+
+	/**
+	 * Callback method for sub-classes. Default implementation does nothing.
+	 */
+	protected void onChannelConnected(final JChannel channel, final String clusterName) {
+	}
+
+	/**
+	 * Callback method for sub-classes. Default implementation logs the error.
+	 */
+	protected void onChannelConnectError(final JChannel channel, final String clusterName, final Exception e) {
+		LOG.error("Error connecting to cluster '{}'", clusterName, e);
 	}
 }
