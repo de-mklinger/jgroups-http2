@@ -16,17 +16,16 @@
 package org.jgroups.protocols.mklinger;
 
 import java.net.ConnectException;
-import java.net.InetAddress;
-import java.net.NetworkInterface;
-import java.net.SocketException;
 import java.util.Collections;
-import java.util.List;
 import java.util.Properties;
 
+import org.jgroups.Address;
 import org.jgroups.PhysicalAddress;
 import org.jgroups.annotations.Property;
+import org.jgroups.protocols.PingData;
 import org.jgroups.protocols.TP;
 import org.jgroups.stack.IpAddress;
+import org.jgroups.util.Responses;
 import org.jgroups.util.Util;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -208,16 +207,34 @@ public class HTTP extends TP implements HttpReceiver {
 		return new IpAddress(external_addr, external_port);
 	}
 
-	public static void main(final String[] args) throws SocketException {
-		System.out.println(Util.getNonLoopbackAddress());
-		System.out.println();
-		final List<NetworkInterface> interfaces = Util.getAllAvailableInterfaces();
-		for (final NetworkInterface interfaze : interfaces) {
-			System.out.println(interfaze.getDisplayName());
-			for (final InetAddress addr : Collections.list(interfaze.getInetAddresses())) {
-				System.out.println(addr);
-			}
-			System.out.println();
+	// Implementation taken from org.jgroups.protocols.TP.sendToSingleMember(Address, byte[], int, int)
+	public PhysicalAddress getPhysicalAddress(final Address dest) {
+		if (dest instanceof PhysicalAddress) {
+			return (PhysicalAddress)dest;
 		}
+
+		PhysicalAddress physical_dest;
+		if ((physical_dest = getPhysicalAddressFromCache(dest)) != null) {
+			return physical_dest;
+		}
+
+		if (who_has_cache.addIfAbsentOrExpired(dest)) { // true if address was added
+			// FIND_MBRS must return quickly
+			final Responses responses = fetchResponsesFromDiscoveryProtocol(Collections.singletonList(dest));
+			try {
+				for (final PingData data : responses) {
+					if (data.getAddress() != null && data.getAddress().equals(dest)) {
+						if ((physical_dest = data.getPhysicalAddr()) != null) {
+							return physical_dest;
+						}
+					}
+				}
+				log.warn(Util.getMessage("PhysicalAddrMissing"), local_addr, dest);
+			} finally {
+				responses.done();
+			}
+		}
+
+		return null;
 	}
 }

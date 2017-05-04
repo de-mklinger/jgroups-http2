@@ -15,6 +15,8 @@
  */
 package de.mklinger.jgroups.http.client.jetty;
 
+import java.net.URI;
+
 import org.eclipse.jetty.client.api.Request;
 
 import de.mklinger.jgroups.http.client.ContentProvider;
@@ -24,6 +26,12 @@ public class JettyRequest implements de.mklinger.jgroups.http.client.Request {
 
 	public JettyRequest(final Request request) {
 		this.request = request;
+	}
+
+	@Override
+	public de.mklinger.jgroups.http.client.Request method(final String method) {
+		request.method(method);
+		return this;
 	}
 
 	@Override
@@ -41,5 +49,10 @@ public class JettyRequest implements de.mklinger.jgroups.http.client.Request {
 	@Override
 	public void send(final de.mklinger.jgroups.http.client.CompleteListener completeListener) {
 		request.send(new JettyCompleteListener(completeListener));
+	}
+
+	@Override
+	public URI getUri() {
+		return request.getURI();
 	}
 }

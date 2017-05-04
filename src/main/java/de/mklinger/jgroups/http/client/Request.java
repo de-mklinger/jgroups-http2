@@ -15,10 +15,13 @@
  */
 package de.mklinger.jgroups.http.client;
 
+import java.net.URI;
+
 /**
  * @author Marc Klinger - mklinger[at]mklinger[dot]de
  */
 public interface Request {
+	Request method(String method);
 
 	Request header(String name, String value);
 
@@ -26,4 +29,5 @@ public interface Request {
 
 	void send(CompleteListener completeListener);
 
+	URI getUri();
 }
