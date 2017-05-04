@@ -55,8 +55,6 @@ public class JGroupsServlet extends HttpServlet {
 
 	@Override
 	public void init() throws ServletException {
-		LOG.info("init");
-
 		final String clusterName = getSetting("clusterName", Optional.of(() -> "jgroupscluster"));
 		IpAddress externalAddress;
 		try {
@@ -122,26 +120,25 @@ public class JGroupsServlet extends HttpServlet {
 		final String systemPropertyName = PROPS_PREFIX + name;
 		value = System.getProperty(systemPropertyName);
 		if (value != null && !value.isEmpty()) {
-			LOG.info("Using system property '{}': '{}'", systemPropertyName, value);
+			LOG.debug("Using system property '{}': '{}'", systemPropertyName, value);
 			return value;
 		}
-		LOG.info("System property not set: '{}'", systemPropertyName);
+		LOG.debug("System property not set: '{}'", systemPropertyName);
 		value = getServletConfig().getInitParameter(name);
 		if (value != null && !value.isEmpty()) {
-			LOG.info("Using init parameter '{}': '{}'", name, value);
+			LOG.debug("Using init parameter '{}': '{}'", name, value);
 			return value;
 		}
-		LOG.info("Init parameter not set: '{}'", name);
+		LOG.debug("Init parameter not set: '{}'", name);
 		value = def
 				.orElseThrow(() -> new ServletException("Missing required setting system property '" + systemPropertyName + "' or init parameter '" + name + "'"))
 				.get();
-		LOG.info("Using fallback value for setting '{}': '{}'", name, value);
+		LOG.debug("Using fallback value for setting '{}': '{}'", name, value);
 		return value;
 	}
 
 	@Override
 	public void destroy() {
-		LOG.info("destroy");
 		Closeables.closeUnchecked(channel);
 	}
 
