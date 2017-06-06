@@ -55,4 +55,9 @@ public class JettyRequest implements de.mklinger.jgroups.http.client.Request {
 	public URI getUri() {
 		return request.getURI();
 	}
+
+	@Override
+	public String getMethod() {
+		return request.getMethod();
+	}
 }

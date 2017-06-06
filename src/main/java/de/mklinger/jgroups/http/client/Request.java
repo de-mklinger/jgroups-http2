@@ -30,4 +30,6 @@ public interface Request {
 	void send(CompleteListener completeListener);
 
 	URI getUri();
+
+	String getMethod();
 }
