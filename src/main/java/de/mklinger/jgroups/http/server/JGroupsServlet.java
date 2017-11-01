@@ -151,6 +151,10 @@ public class JGroupsServlet extends HttpServlet {
 			inputStream.setReadListener(new JGroupsReadListener(asyncContext, receiver, maxContentLength));
 		} catch (final BadRequestException e) {
 			response.sendError(HttpServletResponse.SC_BAD_REQUEST, e.toString());
+			asyncContext.complete();
+		} catch (Exception e) {
+			response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+			asyncContext.complete();
 		}
 	}
 

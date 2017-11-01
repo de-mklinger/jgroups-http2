@@ -12,7 +12,7 @@
 		<maven.compiler.target>${java.version}</maven.compiler.target>
 		<jackson.version>2.7.3</jackson.version>
 		<slf4j.version>1.7.20</slf4j.version>
-		<jettyVersion>9.4.4.v20170414</jettyVersion>
+		<jetty.version>9.4.7.v20170914</jetty.version>
 	</properties>
 
 	<name>${project.artifactId}</name>
@@ -79,17 +79,22 @@
 		<dependency>
 			<groupId>org.eclipse.jetty</groupId>
 			<artifactId>jetty-client</artifactId>
-			<version>${jettyVersion}</version>
+			<version>${jetty.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.eclipse.jetty.http2</groupId>
 			<artifactId>http2-client</artifactId>
-			<version>${jettyVersion}</version>
+			<version>${jetty.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.eclipse.jetty.http2</groupId>
 			<artifactId>http2-http-client-transport</artifactId>
-			<version>${jettyVersion}</version>
+			<version>${jetty.version}</version>
+		</dependency>
+		<dependency>
+		    <groupId>org.eclipse.jetty.alpn</groupId>
+		    <artifactId>alpn-api</artifactId>
+		    <version>1.1.3.v20160715</version>
 		</dependency>
 		
 		<dependency>
@@ -104,28 +109,35 @@
 			<version>1.3</version>
 			<scope>test</scope>
 		</dependency>
+		
 		<dependency>
 			<groupId>org.eclipse.jetty</groupId>
 			<artifactId>jetty-server</artifactId>
-			<version>${jettyVersion}</version>
+			<version>${jetty.version}</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.eclipse.jetty</groupId>
 			<artifactId>jetty-servlet</artifactId>
-			<version>${jettyVersion}</version>
+			<version>${jetty.version}</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.eclipse.jetty.http2</groupId>
 			<artifactId>http2-server</artifactId>
-			<version>${jettyVersion}</version>
+			<version>${jetty.version}</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.eclipse.jetty</groupId>
 			<artifactId>jetty-alpn-server</artifactId>
-			<version>${jettyVersion}</version>
+			<version>${jetty.version}</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.eclipse.jetty</groupId>
+			<artifactId>jetty-alpn-java-server</artifactId>
+			<version>${jetty.version}</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
@@ -158,12 +170,6 @@
 		1.8.0u112: 8.1.10.v20161026
 		1.8.0u121: 8.1.11.v20170118
 		-->
-		<dependency>
-			<groupId>org.mortbay.jetty.alpn</groupId>
-			<artifactId>alpn-boot</artifactId>
-			<version>8.1.7.v20160121</version>
-			<scope>runtime</scope>
-		</dependency>
 	</dependencies>
 	
 	<build>
