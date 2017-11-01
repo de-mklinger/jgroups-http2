@@ -16,10 +16,12 @@
 package de.mklinger.jgroups.http.client.jetty;
 
 import java.net.URI;
+import java.util.concurrent.CompletableFuture;
 
 import org.eclipse.jetty.client.api.Request;
 
 import de.mklinger.jgroups.http.client.ContentProvider;
+import de.mklinger.jgroups.http.client.Response;
 
 public class JettyRequest implements de.mklinger.jgroups.http.client.Request {
 	private final Request request;
@@ -47,8 +49,20 @@ public class JettyRequest implements de.mklinger.jgroups.http.client.Request {
 	}
 
 	@Override
-	public void send(final de.mklinger.jgroups.http.client.CompleteListener completeListener) {
-		request.send(new JettyCompleteListener(completeListener));
+	public CompletableFuture<Response> send() {
+		CompletableFuture<Response> cf = new CompletableFuture<>();
+		request.send(result -> {
+			if (result.isFailed()) {
+				Throwable e = result.getFailure();
+				if (e == null) {
+					e = new Exception("Unknown failure");
+				}
+				cf.completeExceptionally(e);
+			} else {
+				cf.complete(new JettyResponse(result.getResponse()));
+			}
+		});
+		return cf;
 	}
 
 	@Override

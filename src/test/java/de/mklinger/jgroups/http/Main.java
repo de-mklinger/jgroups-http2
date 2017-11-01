@@ -29,6 +29,7 @@ import org.jgroups.View;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import de.mklinger.jgroups.http.client.jdk9.Jdk9HttpClientImpl;
 import de.mklinger.jgroups.http.server.JGroupsServlet;
 
 /**
@@ -43,6 +44,7 @@ public class Main {
 			final ServletHolder servletHolder = server.getServletHandler().addServlet(JGroupsServlet.class, "/jgroups");
 			servletHolder.setInitOrder(1);
 			servletHolder.setInitParameter("externalAddress", NetworkAddress.formatAddress(server.getHttpsBindAddress()));
+			servletHolder.setInitParameter("client.class-name", Jdk9HttpClientImpl.class.getName());
 			servletHolder.setInitParameter("client.ssl.trust-store", Main.class.getResource("test-keystore.jks").toExternalForm());
 			server.start();
 

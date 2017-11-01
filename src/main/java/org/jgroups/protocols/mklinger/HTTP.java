@@ -18,6 +18,7 @@ package org.jgroups.protocols.mklinger;
 import java.net.ConnectException;
 import java.util.Collections;
 import java.util.Properties;
+import java.util.concurrent.CompletionException;
 
 import org.jgroups.Address;
 import org.jgroups.PhysicalAddress;
@@ -31,9 +32,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import de.mklinger.jgroups.http.client.BytesContentProvider;
-import de.mklinger.jgroups.http.client.CompleteListener;
 import de.mklinger.jgroups.http.client.HttpClient;
-import de.mklinger.jgroups.http.client.Result;
+import de.mklinger.jgroups.http.client.jetty.JettyHttpClientImpl;
 import de.mklinger.jgroups.http.common.Closeables;
 import de.mklinger.jgroups.http.common.PropertiesString;
 import de.mklinger.jgroups.http.server.HttpReceiver;
@@ -43,13 +43,6 @@ import de.mklinger.jgroups.http.server.HttpReceiver;
  */
 public class HTTP extends TP implements HttpReceiver {
 	private static final Logger LOG = LoggerFactory.getLogger(HTTP.class);
-
-	@Property(
-			description = "Http client implementation class. Must implement de.mklinger.jgroups.http.client.HttpClient",
-			systemProperty = "de.mklinger.jgroups.http.clientImpl",
-			converter = ClassConverter.class,
-			writable = false)
-	protected Class<? extends HttpClient> httpClientClass;
 
 	@Property(
 			description = "Http client properties.",
@@ -84,11 +77,17 @@ public class HTTP extends TP implements HttpReceiver {
 	public void start() throws Exception {
 		requireValidServicePath();
 
+		String httpClientClassName = null;
 		try {
 			if (httpClientProperties == null && httpClientPropertiesString != null && !httpClientPropertiesString.isEmpty()) {
 				httpClientProperties = PropertiesString.fromString(httpClientPropertiesString, httpClientPropertiesStringSeparator);
 			}
-			client = httpClientClass.newInstance();
+			httpClientClassName = httpClientProperties.getProperty(HttpClient.CLASS_NAME);
+			if (httpClientClassName == null || httpClientClassName.isEmpty()) {
+				httpClientClassName = JettyHttpClientImpl.class.getName();
+			}
+			Class<?> httpClientClass = HTTP.class.getClassLoader().loadClass(httpClientClassName);
+			client = (HttpClient) httpClientClass.getConstructor().newInstance();
 			if (httpClientProperties != null) {
 				client.configure(httpClientProperties);
 			}
@@ -100,7 +99,7 @@ public class HTTP extends TP implements HttpReceiver {
 			} catch (final Exception ex) {
 				e.addSuppressed(ex);
 			}
-			throw new RuntimeException("Error instantiating http client class " + httpClientClass, e);
+			throw new RuntimeException("Error instantiating http client class " + httpClientClassName, e);
 		}
 	}
 
@@ -151,20 +150,23 @@ public class HTTP extends TP implements HttpReceiver {
 		client.newRequest(getServiceUrl(destIpAddress))
 		.header("X-Sender", getLocalPhysicalAddress())
 		.content(new BytesContentProvider("application/x-jgroups-message", data, 0, length))
-		.send(new CompleteListener() {
-			@Override
-			public void onComplete(final Result result) {
-				if (result.isFailed()) {
-					if (result.getFailure() instanceof ConnectException) {
-						LOG.info("Send to {}: Failed: {}", destIpAddress, result.getFailure().toString());
-					} else {
-						LOG.warn("Send to {}: Failed:", destIpAddress, result.getFailure());
-					}
-					// TODO trigger SUSPECT here?
-				} else {
-					LOG.debug("Send to {}: Complete: {}", destIpAddress, result.getResponse().getStatus());
-				}
+		.send()
+		.thenAccept(response -> {
+			LOG.debug("Send to {}: Complete: {}", destIpAddress, response.getStatus());
+		})
+		.exceptionally(failure -> {
+			// TODO why CompletionException here?
+			Throwable ex = failure;
+			if (ex instanceof CompletionException) {
+				ex = ex.getCause();
 			}
+			if (ex instanceof ConnectException) {
+				LOG.info("Send to {}: Failed: {}", destIpAddress, ex.toString());
+			} else {
+				LOG.warn("Send to {}: Failed:", destIpAddress, ex);
+			}
+			// TODO trigger SUSPECT here?
+			return null;
 		});
 	}
 

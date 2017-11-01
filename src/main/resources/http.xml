@@ -2,7 +2,6 @@
         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:schemaLocation="urn:org:jgroups http://www.jgroups.org/schema/jgroups.xsd">
     <mklinger.HTTP
-    	httpClientClass="de.mklinger.jgroups.http.client.jetty.JettyHttpClientImpl"
     	enable_diagnostics="false" />
 
     <TCPPING async_discovery="true"

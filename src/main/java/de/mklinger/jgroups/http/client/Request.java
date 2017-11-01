@@ -16,6 +16,7 @@
 package de.mklinger.jgroups.http.client;
 
 import java.net.URI;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * @author Marc Klinger - mklinger[at]mklinger[dot]de
@@ -27,7 +28,7 @@ public interface Request {
 
 	Request content(ContentProvider contentProvider);
 
-	void send(CompleteListener completeListener);
+	CompletableFuture<Response> send();
 
 	URI getUri();
 

@@ -75,6 +75,7 @@ public class JGroupsServlet extends HttpServlet {
 		final Optional<Supplier<String>> nullDefault = Optional.of(() -> null);
 
 		final Properties httpClientProperties = new Properties();
+		setNullableProperty(httpClientProperties, HttpClient.CLASS_NAME, getSetting("client." + HttpClient.CLASS_NAME, nullDefault));
 		setNullableProperty(httpClientProperties, HttpClient.KEYSTORE_LOCATION, getSetting("client." + HttpClient.KEYSTORE_LOCATION, nullDefault));
 		setNullableProperty(httpClientProperties, HttpClient.KEYSTORE_PASSWORD, getSetting("client." + HttpClient.KEYSTORE_PASSWORD, nullDefault));
 		setNullableProperty(httpClientProperties, HttpClient.KEY_PASSWORD, getSetting("client." + HttpClient.KEY_PASSWORD, nullDefault));
