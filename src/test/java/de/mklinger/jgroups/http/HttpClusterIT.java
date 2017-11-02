@@ -35,8 +35,8 @@ import de.mklinger.jgroups.http.server.JGroupsServlet;
 /**
  * @author Marc Klinger - mklinger[at]mklinger[dot]de - klingerm
  */
-public class HttpClusterTest {
-	private static final Logger LOG = LoggerFactory.getLogger(HttpClusterTest.class);
+public class HttpClusterIT {
+	private static final Logger LOG = LoggerFactory.getLogger(HttpClusterIT.class);
 
 	@Test
 	public void testWithJdk9Client() throws InterruptedException, TimeoutException {
@@ -80,7 +80,7 @@ public class HttpClusterTest {
 		servletHolder.setInitParameter("protocol.mklinger.HTTP.external_port", String.valueOf(server.getHttpsBindAddress().getPort()));
 		servletHolder.setInitParameter("protocol.mklinger.HTTP.client_props", 
 				"class-name=" + clientClassName + "," +
-				"ssl.trust-store=" + HttpClusterTest.class.getResource("test-keystore.jks").toExternalForm());
+				"ssl.trust-store=" + HttpClusterIT.class.getResource("test-keystore.jks").toExternalForm());
 
 		InetSocketAddress otherServerAddress = otherServer.getHttpsBindAddress();
 		servletHolder.setInitParameter("protocol.TCPPING.initial_hosts", 
