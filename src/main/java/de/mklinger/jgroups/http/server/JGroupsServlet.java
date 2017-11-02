@@ -16,8 +16,15 @@
 package de.mklinger.jgroups.http.server;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.StringWriter;
+import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Optional;
-import java.util.Properties;
 import java.util.concurrent.ForkJoinPool;
 import java.util.function.Supplier;
 
@@ -27,14 +34,26 @@ import javax.servlet.ServletInputStream;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.transform.OutputKeys;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
 
 import org.jgroups.JChannel;
+import org.jgroups.conf.ProtocolStackConfigurator;
+import org.jgroups.conf.XmlConfigurator;
 import org.jgroups.protocols.mklinger.HTTP;
-import org.jgroups.stack.IpAddress;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+import org.xml.sax.SAXException;
 
-import de.mklinger.jgroups.http.client.HttpClient;
 import de.mklinger.jgroups.http.common.Closeables;
 import de.mklinger.jgroups.http.common.SizeValue;
 
@@ -51,59 +70,117 @@ public class JGroupsServlet extends HttpServlet {
 	private int maxContentLength;
 	private HttpReceiver receiver;
 	private JChannel channel;
-	private String jchannelProps;
 
 	@Override
 	public void init() throws ServletException {
-		final String clusterName = getSetting("clusterName", Optional.of(() -> "jgroupscluster"));
-		IpAddress externalAddress;
-		try {
-			externalAddress = new IpAddress(getSetting("externalAddress", Optional.empty()));
-		} catch (final Exception e) {
-			throw new ServletException("Invalid externalAddress", e);
-		}
-		final String servicePath = getSetting("servicePath", Optional.of(() -> getServletContext().getContextPath() + "/jgroups"));
-
+		final String clusterName = getSetting("cluster.name", Optional.of(() -> "jgroupscluster"));
+		
+		String prefix = "protocol.";
+		Map<String, String> protocolParameters = new HashMap<>();
+		getServletConfig().getInitParameterNames().asIterator().forEachRemaining(parameterName -> {
+			if (parameterName.startsWith(prefix)) {
+				String key = parameterName.substring(prefix.length());
+				String value = getServletConfig().getInitParameter(parameterName);
+				protocolParameters.put(key, value);
+			}
+		});
+		
 		final SizeValue maxContentSize = SizeValue.parseSizeValue(getSetting("maxContentSize", Optional.of(() -> "500k")));
 		if (maxContentSize.singles() > Integer.MAX_VALUE) {
 			throw new IllegalArgumentException("Max content size too large: " + maxContentSize);
 		}
 		this.maxContentLength = (int)maxContentSize.singles();
 
-		this.jchannelProps = getSetting("jchannelProps", Optional.of(() -> "http.xml"));
-
-		final Optional<Supplier<String>> nullDefault = Optional.of(() -> null);
-
-		final Properties httpClientProperties = new Properties();
-		setNullableProperty(httpClientProperties, HttpClient.CLASS_NAME, getSetting("client." + HttpClient.CLASS_NAME, nullDefault));
-		setNullableProperty(httpClientProperties, HttpClient.KEYSTORE_LOCATION, getSetting("client." + HttpClient.KEYSTORE_LOCATION, nullDefault));
-		setNullableProperty(httpClientProperties, HttpClient.KEYSTORE_PASSWORD, getSetting("client." + HttpClient.KEYSTORE_PASSWORD, nullDefault));
-		setNullableProperty(httpClientProperties, HttpClient.KEY_PASSWORD, getSetting("client." + HttpClient.KEY_PASSWORD, nullDefault));
-		setNullableProperty(httpClientProperties, HttpClient.TRUSTSTORE_LOCATION, getSetting("client." + HttpClient.TRUSTSTORE_LOCATION, nullDefault));
-		setNullableProperty(httpClientProperties, HttpClient.TRUSTSTORE_PASSWORD, getSetting("client." + HttpClient.TRUSTSTORE_PASSWORD, nullDefault));
-
-		initChannel(clusterName, externalAddress, servicePath, httpClientProperties);
+		String baseConfigLocation = getSetting("baseConfigLocation", Optional.of(() -> "classpath:http.xml"));
+		ProtocolStackConfigurator protocolStackConfigurator = getProtocolStackConfigurator(baseConfigLocation, protocolParameters);
+		initChannel(clusterName, protocolStackConfigurator);
 	}
 
-	private void setNullableProperty(final Properties properties, final String key, final String value) {
-		if (key != null && value != null) {
-			properties.setProperty(key, value);
+	public ProtocolStackConfigurator getProtocolStackConfigurator(String baseConfigLocation, Map<String, String> protocolParameters) {
+		if (baseConfigLocation == null || baseConfigLocation.isEmpty()) {
+			throw new IllegalArgumentException();
+		}
+
+		Document doc;
+		try (InputStream in = newInputStream(baseConfigLocation)) {
+			doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(in);
+		} catch (SAXException | IOException | ParserConfigurationException e) {
+			throw new IllegalArgumentException("Error loading configuration: " + baseConfigLocation, e);
+		}
+
+		NodeList protocolElements = doc.getDocumentElement().getChildNodes();
+		for (int i = 0; i < protocolElements.getLength(); i++) {
+			Node n = protocolElements.item(i);
+			if (n.getNodeType() != Node.ELEMENT_NODE) {
+				continue;
+			}
+			Element element = (Element) n;
+			String protocolName = element.getNodeName();
+
+			String prefix = protocolName + ".";
+
+			for (Entry<String, String> e : protocolParameters.entrySet()) {
+				String key = e.getKey();
+				if (key.startsWith(prefix)) {
+					String property = key.substring(prefix.length());
+					element.setAttribute(property, e.getValue());
+				}
+			}
+		}
+
+		if (LOG.isDebugEnabled()) {
+			LOG.debug("Protocol stack configuration:\n\n{}", toString(doc));
+		}
+
+		try {
+			return XmlConfigurator.getInstance(doc.getDocumentElement());
+		} catch (Exception e) {
+			throw new RuntimeException("Error parsing JGroups xml", e);
+		}
+
+	}
+
+	private InputStream newInputStream(String configLocation) throws IOException {
+		if (configLocation.startsWith("classpath:")) {
+			String classpathLocation = configLocation.substring("classpath:".length());
+			InputStream in = getClass().getClassLoader().getResourceAsStream(classpathLocation);
+			if (in == null) {
+				throw new IllegalArgumentException("Configuration not found on classpath: " + classpathLocation);
+			}
+			return in;
+		} else {
+			try {
+				return new URI(configLocation).toURL().openStream();
+			} catch (URISyntaxException | MalformedURLException e) {
+				throw new IllegalArgumentException("Illegal configuration location: " + configLocation, e);
+			}
 		}
 	}
 
-	private void initChannel(final String clusterName, final IpAddress externalAddress, final String servicePath, final Properties httpClientProperties) throws ServletException {
+	private Object toString(Document doc) {
 		try {
-			this.channel = new JChannel(jchannelProps);
+			Transformer transformer = TransformerFactory.newInstance().newTransformer();
+			transformer.setOutputProperty(OutputKeys.INDENT, "yes");
+			transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
+			StreamResult result = new StreamResult(new StringWriter());
+			DOMSource source = new DOMSource(doc);
+			transformer.transform(source, result);
+			return result.getWriter().toString();
+		} catch (Exception e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+	private void initChannel(String clusterName, ProtocolStackConfigurator configurator) throws ServletException {
+		try {
+			this.channel = new JChannel(configurator);
 		} catch (final Exception e) {
-			throw new ServletException("Error creating channel using '" + jchannelProps + "'", e);
+			throw new ServletException("Error creating channel", e);
 		}
 		getServletContext().setAttribute(CHANNEL_ATTRIBUTE, this.channel);
 		onChannelCreated(this.channel);
 
 		final HTTP httpProtocol = (HTTP) channel.getProtocolStack().getTransport();
-		httpProtocol.setExternalAddress(externalAddress);
-		httpProtocol.setServicePath(servicePath);
-		httpProtocol.setHttpClientProperties(httpClientProperties);
 		this.receiver = httpProtocol;
 
 		ForkJoinPool.commonPool().execute(() -> {

@@ -48,30 +48,22 @@ public class HTTP extends TP implements HttpReceiver {
 			description = "Http client properties.",
 			systemProperty = "de.mklinger.jgroups.http.clientProperties",
 			writable = false)
-	protected String httpClientPropertiesString;
+	protected String client_props;
 
 	@Property(
 			description = "Http client properties separator.",
 			systemProperty = "de.mklinger.jgroups.http.clientPropertiesSeparator",
 			writable = false)
-	protected String httpClientPropertiesStringSeparator = ",";
+	protected String client_props_sep = ",";
+
+	@Property(
+			description = "Http service path.",
+			systemProperty = "de.mklinger.jgroups.http.servicePath",
+			writable = false)
+	protected String service_path = "/jgroups";
 
 	private HttpClient client;
-	private String servicePath = "/jgroups";
 	private Properties httpClientProperties;
-
-	public void setExternalAddress(final IpAddress externalAddress) {
-		external_addr = externalAddress.getIpAddress();
-		external_port = externalAddress.getPort();
-	}
-
-	public void setServicePath(final String servicePath) {
-		this.servicePath = servicePath;
-	}
-
-	public void setHttpClientProperties(final Properties httpClientProperties) {
-		this.httpClientProperties = httpClientProperties;
-	}
 
 	@Override
 	public void start() throws Exception {
@@ -79,8 +71,8 @@ public class HTTP extends TP implements HttpReceiver {
 
 		String httpClientClassName = null;
 		try {
-			if (httpClientProperties == null && httpClientPropertiesString != null && !httpClientPropertiesString.isEmpty()) {
-				httpClientProperties = PropertiesString.fromString(httpClientPropertiesString, httpClientPropertiesStringSeparator);
+			if (httpClientProperties == null && client_props != null && !client_props.isEmpty()) {
+				httpClientProperties = PropertiesString.fromString(client_props, client_props_sep);
 			}
 			httpClientClassName = httpClientProperties.getProperty(HttpClient.CLASS_NAME);
 			if (httpClientClassName == null || httpClientClassName.isEmpty()) {
@@ -104,13 +96,13 @@ public class HTTP extends TP implements HttpReceiver {
 	}
 
 	private void requireValidServicePath() {
-		if (servicePath == null) {
-			throw new IllegalArgumentException("servicePath is null");
+		if (service_path == null) {
+			throw new IllegalArgumentException("service_path is null");
 		}
-		if (!servicePath.isEmpty() && !servicePath.startsWith("/")) {
-			throw new IllegalArgumentException("servicePath must be empty or start with '/'. Given: '" + servicePath + "'");
+		if (!service_path.isEmpty() && !service_path.startsWith("/")) {
+			throw new IllegalArgumentException("service_path must be empty or start with '/'. Given: '" + service_path + "'");
 		}
-		LOG.info("Using service path '{}'", servicePath);
+		LOG.info("Using service path '{}'", service_path);
 	}
 
 	@Override
@@ -184,7 +176,7 @@ public class HTTP extends TP implements HttpReceiver {
 		}
 		sb.append(':');
 		sb.append(destIpAddress.getPort());
-		sb.append(servicePath);
+		sb.append(service_path);
 		return sb.toString();
 	}
 
