@@ -46,6 +46,11 @@ public class Jdk9Request implements Request {
 
 	@Override
 	public Request content(ContentProvider contentProvider) {
+		String contentType = contentProvider.getContentType();
+		if (contentType != null && !contentType.isEmpty()) {
+			builder.header("Content-Type", contentType);
+		}
+		
 		long len = 0;
 		for (ByteBuffer bb : contentProvider) {
 			len = Math.addExact(len, bb.remaining());

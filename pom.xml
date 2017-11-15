@@ -169,6 +169,17 @@
 					<artifactId>maven-release-plugin</artifactId>
 					<version>2.5.3</version>
 				</plugin>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-javadoc-plugin</artifactId>
+					<version>3.0.0-M1</version>
+					<configuration>
+						<additionalJOptions>
+							<additionalJOption>--add-modules</additionalJOption>
+							<additionalJOption>jdk.incubator.httpclient</additionalJOption>
+						</additionalJOptions>
+					</configuration>
+				</plugin>
 				<!-- Use 'mvn license:format' at top of project to add missing headers -->
 				<plugin>
 					<groupId>com.mycila</groupId>

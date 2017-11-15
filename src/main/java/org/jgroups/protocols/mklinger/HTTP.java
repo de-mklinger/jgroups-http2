@@ -33,7 +33,7 @@ import org.slf4j.LoggerFactory;
 
 import de.mklinger.jgroups.http.client.BytesContentProvider;
 import de.mklinger.jgroups.http.client.HttpClient;
-import de.mklinger.jgroups.http.client.jetty.JettyHttpClientImpl;
+import de.mklinger.jgroups.http.client.jdk9.Jdk9HttpClientImpl;
 import de.mklinger.jgroups.http.common.Closeables;
 import de.mklinger.jgroups.http.common.PropertiesString;
 import de.mklinger.jgroups.http.server.HttpReceiver;
@@ -46,21 +46,21 @@ public class HTTP extends TP implements HttpReceiver {
 
 	@Property(
 			description = "Http client properties.",
-			systemProperty = "de.mklinger.jgroups.http.clientProperties",
+			systemProperty = "jgroups.http.client_props",
 			writable = false)
 	protected String client_props;
 
 	@Property(
 			description = "Http client properties separator.",
-			systemProperty = "de.mklinger.jgroups.http.clientPropertiesSeparator",
+			systemProperty = "jgroups.http.client_props_sep",
 			writable = false)
 	protected String client_props_sep = ",";
 
 	@Property(
 			description = "Http service path.",
-			systemProperty = "de.mklinger.jgroups.http.servicePath",
+			systemProperty = "jgroups.http.external_path",
 			writable = false)
-	protected String service_path = "/jgroups";
+	protected String external_path = "/jgroups";
 
 	private HttpClient client;
 	private Properties httpClientProperties;
@@ -76,7 +76,7 @@ public class HTTP extends TP implements HttpReceiver {
 			}
 			httpClientClassName = httpClientProperties.getProperty(HttpClient.CLASS_NAME);
 			if (httpClientClassName == null || httpClientClassName.isEmpty()) {
-				httpClientClassName = JettyHttpClientImpl.class.getName();
+				httpClientClassName = Jdk9HttpClientImpl.class.getName();
 			}
 			Class<?> httpClientClass = HTTP.class.getClassLoader().loadClass(httpClientClassName);
 			client = (HttpClient) httpClientClass.getConstructor().newInstance();
@@ -96,13 +96,13 @@ public class HTTP extends TP implements HttpReceiver {
 	}
 
 	private void requireValidServicePath() {
-		if (service_path == null) {
-			throw new IllegalArgumentException("service_path is null");
+		if (external_path == null) {
+			throw new IllegalArgumentException("external_path is null");
 		}
-		if (!service_path.isEmpty() && !service_path.startsWith("/")) {
-			throw new IllegalArgumentException("service_path must be empty or start with '/'. Given: '" + service_path + "'");
+		if (!external_path.isEmpty() && !external_path.startsWith("/")) {
+			throw new IllegalArgumentException("external_path must be empty or start with '/'. Given: '" + external_path + "'");
 		}
-		LOG.info("Using service path '{}'", service_path);
+		LOG.info("Using external path '{}'", external_path);
 	}
 
 	@Override
@@ -176,7 +176,7 @@ public class HTTP extends TP implements HttpReceiver {
 		}
 		sb.append(':');
 		sb.append(destIpAddress.getPort());
-		sb.append(service_path);
+		sb.append(external_path);
 		return sb.toString();
 	}
 
