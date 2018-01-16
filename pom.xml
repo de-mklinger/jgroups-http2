@@ -1,9 +1,8 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>de.mklinger.jgroups</groupId>
 	<artifactId>jgroups-http2</artifactId>
-	<version>1.4-SNAPSHOT</version>
+	<version>1.4</version>
 
 	<properties>
 		<java.version>1.8</java.version>
@@ -45,7 +44,7 @@
 	<scm>
 		<connection>scm:git:git@github.com:de-mklinger/jgroups-http2.git</connection>
 		<developerConnection>scm:git:git@github.com:de-mklinger/jgroups-http2.git</developerConnection>
-		<tag>HEAD</tag>
+		<tag>jgroups-http2-1.4</tag>
 		<url>https://github.com/de-mklinger/jgroups-http2</url>
 	</scm>
 
