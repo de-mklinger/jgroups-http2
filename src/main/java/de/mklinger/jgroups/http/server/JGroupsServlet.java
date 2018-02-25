@@ -238,18 +238,24 @@ public class JGroupsServlet extends HttpServlet {
 
 	/**
 	 * Callback method for sub-classes. Default implementation does nothing.
+	 * @param channel The channel that was created
 	 */
 	protected void onChannelCreated(final JChannel channel) {
 	}
 
 	/**
 	 * Callback method for sub-classes. Default implementation does nothing.
+	 * @param channel The channel that connected the cluster
+	 * @param clusterName The name of the cluster that was connected
 	 */
 	protected void onChannelConnected(final JChannel channel, final String clusterName) {
 	}
 
 	/**
 	 * Callback method for sub-classes. Default implementation logs the error.
+	 * @param channel The channel that should have connected the cluster
+	 * @param clusterName The name of the cluster that was tried to connect
+	 * @param e The error
 	 */
 	protected void onChannelConnectError(final JChannel channel, final String clusterName, final Exception e) {
 		LOG.error("Error connecting to cluster '{}'", clusterName, e);
