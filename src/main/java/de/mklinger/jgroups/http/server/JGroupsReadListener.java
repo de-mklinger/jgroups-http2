@@ -56,6 +56,7 @@ public class JGroupsReadListener implements ReadListener {
 	private IpAddress getSender(final HttpServletRequest request) throws BadRequestException {
 		try {
 			final String senderAddress = Objects.requireNonNull(request.getHeader("X-Sender"), "Missing header 'X-Sender'");
+			LOG.info("Sender: {}", senderAddress);
 			return new IpAddress(senderAddress);
 		} catch (final Exception e) {
 			throw new BadRequestException(e);
@@ -99,6 +100,7 @@ public class JGroupsReadListener implements ReadListener {
 	public void onAllDataRead() throws IOException {
 		try {
 			final byte[] messageData = data.toByteArray();
+			LOG.info("Message read, calling receive()");
 			receiver.receive(sender, messageData, 0, messageData.length);
 			asyncContext.complete();
 		} catch (final Exception e) {

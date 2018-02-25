@@ -84,7 +84,7 @@ public class Jdk9Request implements Request {
 		HttpRequest request = builder.method(method, bodyProcessor).build();
 		httpClient.sendAsync(request, HttpResponse.BodyHandler.discard(null))
 		.thenAccept(response -> {
-				LOG.info("jdk9 http client response complete using {}", response.version());
+				LOG.debug("jdk9 http client response complete using {}", response.version());
 				cf.complete(new Jdk9Response(response));
 			})
 		.exceptionally(failure -> {

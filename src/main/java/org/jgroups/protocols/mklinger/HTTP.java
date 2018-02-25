@@ -78,7 +78,7 @@ public class HTTP extends TP implements HttpReceiver {
 			if (httpClientClassName == null || httpClientClassName.isEmpty()) {
 				httpClientClassName = Jdk9HttpClientImpl.class.getName();
 			}
-			Class<?> httpClientClass = HTTP.class.getClassLoader().loadClass(httpClientClassName);
+			final Class<?> httpClientClass = HTTP.class.getClassLoader().loadClass(httpClientClassName);
 			client = (HttpClient) httpClientClass.getConstructor().newInstance();
 			if (httpClientProperties != null) {
 				client.configure(httpClientProperties);
@@ -139,6 +139,7 @@ public class HTTP extends TP implements HttpReceiver {
 		final byte[] data = new byte[length];
 		System.arraycopy(_data, offset, data, 0, length);
 
+		LOG.debug("Sending message to {}...", destIpAddress);
 		client.newRequest(getServiceUrl(destIpAddress))
 		.header("X-Sender", getLocalPhysicalAddress())
 		.content(new BytesContentProvider("application/x-jgroups-message", data, 0, length))

@@ -74,29 +74,29 @@ public class JGroupsServlet extends HttpServlet {
 	@Override
 	public void init() throws ServletException {
 		final String clusterName = getSetting("cluster.name", Optional.of(() -> "jgroupscluster"));
-		
-		String prefix = "protocol.";
-		Map<String, String> protocolParameters = new HashMap<>();
+
+		final String prefix = "protocol.";
+		final Map<String, String> protocolParameters = new HashMap<>();
 		getServletConfig().getInitParameterNames().asIterator().forEachRemaining(parameterName -> {
 			if (parameterName.startsWith(prefix)) {
-				String key = parameterName.substring(prefix.length());
-				String value = getServletConfig().getInitParameter(parameterName);
+				final String key = parameterName.substring(prefix.length());
+				final String value = getServletConfig().getInitParameter(parameterName);
 				protocolParameters.put(key, value);
 			}
 		});
-		
+
 		final SizeValue maxContentSize = SizeValue.parseSizeValue(getSetting("maxContentSize", Optional.of(() -> "500k")));
 		if (maxContentSize.singles() > Integer.MAX_VALUE) {
 			throw new IllegalArgumentException("Max content size too large: " + maxContentSize);
 		}
 		this.maxContentLength = (int)maxContentSize.singles();
 
-		String baseConfigLocation = getSetting("baseConfigLocation", Optional.of(() -> "classpath:http.xml"));
-		ProtocolStackConfigurator protocolStackConfigurator = getProtocolStackConfigurator(baseConfigLocation, protocolParameters);
+		final String baseConfigLocation = getSetting("baseConfigLocation", Optional.of(() -> "classpath:http.xml"));
+		final ProtocolStackConfigurator protocolStackConfigurator = getProtocolStackConfigurator(baseConfigLocation, protocolParameters);
 		initChannel(clusterName, protocolStackConfigurator);
 	}
 
-	public ProtocolStackConfigurator getProtocolStackConfigurator(String baseConfigLocation, Map<String, String> protocolParameters) {
+	public ProtocolStackConfigurator getProtocolStackConfigurator(final String baseConfigLocation, final Map<String, String> protocolParameters) {
 		if (baseConfigLocation == null || baseConfigLocation.isEmpty()) {
 			throw new IllegalArgumentException();
 		}
@@ -108,21 +108,21 @@ public class JGroupsServlet extends HttpServlet {
 			throw new IllegalArgumentException("Error loading configuration: " + baseConfigLocation, e);
 		}
 
-		NodeList protocolElements = doc.getDocumentElement().getChildNodes();
+		final NodeList protocolElements = doc.getDocumentElement().getChildNodes();
 		for (int i = 0; i < protocolElements.getLength(); i++) {
-			Node n = protocolElements.item(i);
+			final Node n = protocolElements.item(i);
 			if (n.getNodeType() != Node.ELEMENT_NODE) {
 				continue;
 			}
-			Element element = (Element) n;
-			String protocolName = element.getNodeName();
+			final Element element = (Element) n;
+			final String protocolName = element.getNodeName();
 
-			String prefix = protocolName + ".";
+			final String prefix = protocolName + ".";
 
-			for (Entry<String, String> e : protocolParameters.entrySet()) {
-				String key = e.getKey();
+			for (final Entry<String, String> e : protocolParameters.entrySet()) {
+				final String key = e.getKey();
 				if (key.startsWith(prefix)) {
-					String property = key.substring(prefix.length());
+					final String property = key.substring(prefix.length());
 					element.setAttribute(property, e.getValue());
 				}
 			}
@@ -134,16 +134,16 @@ public class JGroupsServlet extends HttpServlet {
 
 		try {
 			return XmlConfigurator.getInstance(doc.getDocumentElement());
-		} catch (Exception e) {
+		} catch (final Exception e) {
 			throw new RuntimeException("Error parsing JGroups xml", e);
 		}
 
 	}
 
-	private InputStream newInputStream(String configLocation) throws IOException {
+	private InputStream newInputStream(final String configLocation) throws IOException {
 		if (configLocation.startsWith("classpath:")) {
-			String classpathLocation = configLocation.substring("classpath:".length());
-			InputStream in = getClass().getClassLoader().getResourceAsStream(classpathLocation);
+			final String classpathLocation = configLocation.substring("classpath:".length());
+			final InputStream in = getClass().getClassLoader().getResourceAsStream(classpathLocation);
 			if (in == null) {
 				throw new IllegalArgumentException("Configuration not found on classpath: " + classpathLocation);
 			}
@@ -157,21 +157,21 @@ public class JGroupsServlet extends HttpServlet {
 		}
 	}
 
-	private Object toString(Document doc) {
+	private Object toString(final Document doc) {
 		try {
-			Transformer transformer = TransformerFactory.newInstance().newTransformer();
+			final Transformer transformer = TransformerFactory.newInstance().newTransformer();
 			transformer.setOutputProperty(OutputKeys.INDENT, "yes");
 			transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
-			StreamResult result = new StreamResult(new StringWriter());
-			DOMSource source = new DOMSource(doc);
+			final StreamResult result = new StreamResult(new StringWriter());
+			final DOMSource source = new DOMSource(doc);
 			transformer.transform(source, result);
 			return result.getWriter().toString();
-		} catch (Exception e) {
+		} catch (final Exception e) {
 			throw new RuntimeException(e);
 		}
 	}
 
-	private void initChannel(String clusterName, ProtocolStackConfigurator configurator) throws ServletException {
+	private void initChannel(final String clusterName, final ProtocolStackConfigurator configurator) throws ServletException {
 		try {
 			this.channel = new JChannel(configurator);
 		} catch (final Exception e) {
@@ -222,7 +222,7 @@ public class JGroupsServlet extends HttpServlet {
 
 	@Override
 	protected void service(final HttpServletRequest request, final HttpServletResponse response) throws ServletException, IOException {
-		LOG.debug("SERVICE: {} {}", request.getMethod(), request.getPathInfo());
+		LOG.debug("Service: {}", request.getMethod(), request.getRequestURL());
 		final AsyncContext asyncContext = request.startAsync();
 		final ServletInputStream inputStream = request.getInputStream();
 		try {
@@ -230,7 +230,7 @@ public class JGroupsServlet extends HttpServlet {
 		} catch (final BadRequestException e) {
 			response.sendError(HttpServletResponse.SC_BAD_REQUEST, e.toString());
 			asyncContext.complete();
-		} catch (Exception e) {
+		} catch (final Exception e) {
 			response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
 			asyncContext.complete();
 		}
