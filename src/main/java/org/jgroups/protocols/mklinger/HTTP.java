@@ -33,7 +33,6 @@ import org.slf4j.LoggerFactory;
 
 import de.mklinger.jgroups.http.client.BytesContentProvider;
 import de.mklinger.jgroups.http.client.HttpClient;
-import de.mklinger.jgroups.http.client.jdk9.Jdk9HttpClientImpl;
 import de.mklinger.jgroups.http.common.Closeables;
 import de.mklinger.jgroups.http.common.PropertiesString;
 import de.mklinger.jgroups.http.server.HttpReceiver;
@@ -76,7 +75,7 @@ public class HTTP extends TP implements HttpReceiver {
 			}
 			httpClientClassName = httpClientProperties.getProperty(HttpClient.CLASS_NAME);
 			if (httpClientClassName == null || httpClientClassName.isEmpty()) {
-				httpClientClassName = Jdk9HttpClientImpl.class.getName();
+				throw new IllegalStateException("No http2-client specified for jgroups communication! add it with the '" + HttpClient.CLASS_NAME + "' property!");
 			}
 			final Class<?> httpClientClass = HTTP.class.getClassLoader().loadClass(httpClientClassName);
 			client = (HttpClient) httpClientClass.getConstructor().newInstance();

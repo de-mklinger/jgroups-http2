@@ -21,6 +21,8 @@ import java.io.StringWriter;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.Collections;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -77,7 +79,8 @@ public class JGroupsServlet extends HttpServlet {
 
 		final String prefix = "protocol.";
 		final Map<String, String> protocolParameters = new HashMap<>();
-		getServletConfig().getInitParameterNames().asIterator().forEachRemaining(parameterName -> {
+		Enumeration<String> initParameterNames = getServletConfig().getInitParameterNames();
+		Collections.list(initParameterNames).forEach(parameterName -> {
 			if (parameterName.startsWith(prefix)) {
 				final String key = parameterName.substring(prefix.length());
 				final String value = getServletConfig().getInitParameter(parameterName);

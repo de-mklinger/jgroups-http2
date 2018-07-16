@@ -24,31 +24,28 @@ import org.eclipse.jetty.servlet.ServletHolder;
 import org.jgroups.JChannel;
 import org.jgroups.ReceiverAdapter;
 import org.jgroups.View;
-import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import de.mklinger.jgroups.http.client.jdk9.Jdk9HttpClientImpl;
-import de.mklinger.jgroups.http.client.jetty.JettyHttpClientImpl;
 import de.mklinger.jgroups.http.server.JGroupsServlet;
 
 /**
  * @author Marc Klinger - mklinger[at]mklinger[dot]de - klingerm
  */
-public class HttpClusterIT {
+public abstract class HttpClusterIT {
 	private static final Logger LOG = LoggerFactory.getLogger(HttpClusterIT.class);
 
-	@Test
-	public void testWithJdk9Client() throws InterruptedException, TimeoutException {
-		testWithClient(Jdk9HttpClientImpl.class.getName());
-	}
+//	@Test
+//	public void testWithJdk9Client() throws InterruptedException, TimeoutException {
+//		testWithClient(Jdk10HttpClientImpl.class.getName());
+//	}
 
-	@Test
-	public void testWithJettyClient() throws InterruptedException, TimeoutException {
-		testWithClient(JettyHttpClientImpl.class.getName());
-	}
+//	@Test
+//	public void testWithJettyClient() throws InterruptedException, TimeoutException {
+//		testWithClient(JettyHttpClientImpl.class.getName());
+//	}
 
-	private static void testWithClient(String clientClassName) throws InterruptedException, TimeoutException {
+	protected static void testWithClient(String clientClassName) throws InterruptedException, TimeoutException {
 		try (final JettyHttpServerImpl server1 = new JettyHttpServerImpl("127.0.0.1", 8443, 100)) {
 
 			final JChannel channel1;
