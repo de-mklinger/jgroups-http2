@@ -28,7 +28,6 @@ import org.eclipse.jetty.http2.HTTP2Cipher;
 import org.eclipse.jetty.http2.server.HTTP2ServerConnectionFactory;
 import org.eclipse.jetty.server.HttpConfiguration;
 import org.eclipse.jetty.server.HttpConnectionFactory;
-import org.eclipse.jetty.server.NegotiatingServerConnectionFactory;
 import org.eclipse.jetty.server.SecureRequestCustomizer;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
@@ -150,11 +149,6 @@ public class JettyHttpServerImpl implements AutoCloseable {
 	}
 
 	private ALPNServerConnectionFactory createAlpnConnectionFactory(final HttpConnectionFactory httpConnectionFactory) {
-		try {
-			NegotiatingServerConnectionFactory.checkProtocolNegotiationAvailable();
-		} catch (final IllegalStateException e) {
-			throw new IllegalStateException("ALPN must be on the boot classpath using -Xbootclasspath/p:<alpn-jar>. For more information see https://www.eclipse.org/jetty/documentation/9.4.x/alpn-chapter.html", e);
-		}
 		final ALPNServerConnectionFactory alpn = new ALPNServerConnectionFactory();
 		alpn.setDefaultProtocol(httpConnectionFactory.getProtocol());
 		return alpn;
