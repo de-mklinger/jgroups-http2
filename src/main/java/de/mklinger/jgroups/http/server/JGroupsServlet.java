@@ -65,6 +65,7 @@ import de.mklinger.jgroups.http.common.SizeValue;
 public class JGroupsServlet extends HttpServlet {
 	private static final String PROPS_PREFIX = "de.mklinger.jgroups.http.";
 	public static final String CHANNEL_ATTRIBUTE = PROPS_PREFIX + "channel";
+	public static final String ERROR_ATTRIBUTE = PROPS_PREFIX + "error";
 
 	private static final long serialVersionUID = 1L;
 	private static final Logger LOG = LoggerFactory.getLogger(JGroupsServlet.class);
@@ -79,7 +80,7 @@ public class JGroupsServlet extends HttpServlet {
 
 		final String prefix = "protocol.";
 		final Map<String, String> protocolParameters = new HashMap<>();
-		Enumeration<String> initParameterNames = getServletConfig().getInitParameterNames();
+		final Enumeration<String> initParameterNames = getServletConfig().getInitParameterNames();
 		Collections.list(initParameterNames).forEach(parameterName -> {
 			if (parameterName.startsWith(prefix)) {
 				final String key = parameterName.substring(prefix.length());
@@ -190,7 +191,8 @@ public class JGroupsServlet extends HttpServlet {
 			try {
 				channel.connect(clusterName);
 				onChannelConnected(channel, clusterName);
-			} catch (final Exception e) {
+			} catch (final Throwable e) {
+				getServletContext().setAttribute(ERROR_ATTRIBUTE, e);
 				onChannelConnectError(channel, clusterName, e);
 			}
 		});
@@ -260,7 +262,7 @@ public class JGroupsServlet extends HttpServlet {
 	 * @param clusterName The name of the cluster that was tried to connect
 	 * @param e The error
 	 */
-	protected void onChannelConnectError(final JChannel channel, final String clusterName, final Exception e) {
+	protected void onChannelConnectError(final JChannel channel, final String clusterName, final Throwable e) {
 		LOG.error("Error connecting to cluster '{}'", clusterName, e);
 	}
 }
