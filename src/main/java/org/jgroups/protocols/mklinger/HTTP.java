@@ -16,6 +16,7 @@
 package org.jgroups.protocols.mklinger;
 
 import java.net.ConnectException;
+import java.net.URI;
 import java.util.Collections;
 import java.util.Properties;
 import java.util.concurrent.CompletionException;
@@ -31,9 +32,11 @@ import org.jgroups.util.Util;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import de.mklinger.jgroups.http.client.BytesContentProvider;
-import de.mklinger.jgroups.http.client.HttpClient;
-import de.mklinger.jgroups.http.client.jdk9.Jdk9HttpClientImpl;
+import de.mklinger.commons.httpclient.BodyHandlers;
+import de.mklinger.commons.httpclient.BodyProviders;
+import de.mklinger.commons.httpclient.HttpClient;
+import de.mklinger.commons.httpclient.HttpRequest;
+import de.mklinger.jgroups.http.client.ClientFactory;
 import de.mklinger.jgroups.http.common.Closeables;
 import de.mklinger.jgroups.http.common.PropertiesString;
 import de.mklinger.jgroups.http.server.HttpReceiver;
@@ -69,21 +72,12 @@ public class HTTP extends TP implements HttpReceiver {
 	public void start() throws Exception {
 		requireValidServicePath();
 
-		String httpClientClassName = null;
+		final String httpClientClassName = null;
 		try {
 			if (httpClientProperties == null && client_props != null && !client_props.isEmpty()) {
 				httpClientProperties = PropertiesString.fromString(client_props, client_props_sep);
 			}
-			httpClientClassName = httpClientProperties.getProperty(HttpClient.CLASS_NAME);
-			if (httpClientClassName == null || httpClientClassName.isEmpty()) {
-				httpClientClassName = Jdk9HttpClientImpl.class.getName();
-			}
-			final Class<?> httpClientClass = HTTP.class.getClassLoader().loadClass(httpClientClassName);
-			client = (HttpClient) httpClientClass.getConstructor().newInstance();
-			if (httpClientProperties != null) {
-				client.configure(httpClientProperties);
-			}
-			client.start();
+			client = ClientFactory.newClient(httpClientProperties);
 			super.start();
 		} catch (final Exception e) {
 			try {
@@ -140,13 +134,15 @@ public class HTTP extends TP implements HttpReceiver {
 		System.arraycopy(_data, offset, data, 0, length);
 
 		LOG.debug("Sending message to {}...", destIpAddress);
-		client.newRequest(getServiceUrl(destIpAddress))
-		.header("X-Sender", getLocalPhysicalAddress())
-		.content(new BytesContentProvider("application/x-jgroups-message", data, 0, length))
-		.send()
-		.thenAccept(response -> {
-			LOG.debug("Send to {}: Complete: {}", destIpAddress, response.getStatus());
-		})
+
+		final HttpRequest request = HttpRequest.newBuilder(getServiceUrl(destIpAddress))
+				.header("X-Sender", getLocalPhysicalAddress())
+				.header("Content-Type", "application/x-jgroups-message")
+				.POST(BodyProviders.fromByteArray(data))
+				.build();
+
+		client.sendAsync(request, BodyHandlers.discard())
+		.thenAccept(response -> LOG.debug("Send to {}: Complete: {}", destIpAddress, response.statusCode()))
 		.exceptionally(failure -> {
 			// TODO why CompletionException here?
 			Throwable ex = failure;
@@ -163,7 +159,7 @@ public class HTTP extends TP implements HttpReceiver {
 		});
 	}
 
-	private String getServiceUrl(final IpAddress destIpAddress) {
+	private URI getServiceUrl(final IpAddress destIpAddress) {
 		final StringBuilder sb = new StringBuilder();
 		sb.append("https://");
 		final String hostAddress = destIpAddress.getIpAddress().getHostAddress();
@@ -178,7 +174,7 @@ public class HTTP extends TP implements HttpReceiver {
 		sb.append(':');
 		sb.append(destIpAddress.getPort());
 		sb.append(external_path);
-		return sb.toString();
+		return URI.create(sb.toString());
 	}
 
 	public HttpClient getClient() {

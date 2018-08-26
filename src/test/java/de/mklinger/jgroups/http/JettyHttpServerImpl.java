@@ -18,17 +18,18 @@ package de.mklinger.jgroups.http;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
+import java.security.Security;
 import java.util.HashSet;
 import java.util.Set;
 
 import javax.servlet.ServletContext;
 
+import org.conscrypt.OpenSSLProvider;
 import org.eclipse.jetty.alpn.server.ALPNServerConnectionFactory;
 import org.eclipse.jetty.http2.HTTP2Cipher;
 import org.eclipse.jetty.http2.server.HTTP2ServerConnectionFactory;
 import org.eclipse.jetty.server.HttpConfiguration;
 import org.eclipse.jetty.server.HttpConnectionFactory;
-import org.eclipse.jetty.server.NegotiatingServerConnectionFactory;
 import org.eclipse.jetty.server.SecureRequestCustomizer;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
@@ -81,32 +82,66 @@ public class JettyHttpServerImpl implements AutoCloseable {
 	}
 
 	private Server createServer(final InetSocketAddress sslListenAddress, final InetSocketAddress plainListenAddress) {
-		final HttpConfiguration config = createHttpConfiguration(sslListenAddress);
-		final HttpConnectionFactory httpConnectionFactory = new HttpConnectionFactory(config);
-		final HTTP2ServerConnectionFactory http2ConnectionFactory = new HTTP2ServerConnectionFactory(config);
-		final ALPNServerConnectionFactory alpnConnectionFactory = createAlpnConnectionFactory(httpConnectionFactory);
-		final SslConnectionFactory sslConnectionFactory = createSslConnectionFactory(alpnConnectionFactory);
+
+		Security.addProvider(new OpenSSLProvider());
 
 		final Server server = new Server();
-		//server.setRequestLog(new AsyncNCSARequestLog());
 
-		final ServerConnector sslConnector = new ServerConnector(server,
-				sslConnectionFactory,
-				alpnConnectionFactory,
-				http2ConnectionFactory,
-				httpConnectionFactory);
-		sslConnector.setHost(sslListenAddress.getHostString());
-		sslConnector.setPort(sslListenAddress.getPort());
-		server.addConnector(sslConnector);
+		final HttpConfiguration httpsConfig = new HttpConfiguration();
+		httpsConfig.setSecureScheme("https");
+		httpsConfig.setSecurePort(sslListenAddress.getPort());
+		httpsConfig.addCustomizer(new SecureRequestCustomizer());
 
-		if (plainListenAddress != null) {
-			final ServerConnector plainHttpConnector = new ServerConnector(server, httpConnectionFactory);
-			plainHttpConnector.setHost(plainListenAddress.getHostString());
-			plainHttpConnector.setPort(plainListenAddress.getPort());
-			server.addConnector(plainHttpConnector);
-		}
+		//		sslContextFactory.setProvider("Conscrypt");
+		//		sslContextFactory.setKeyStorePath(Settings.get("server.ssl.key-store").replace("classpath:", "src/test/resources/"));
+		//		sslContextFactory.setKeyStorePassword(Settings.get("server.ssl.key-store-password"));
+		//		sslContextFactory.setKeyManagerPassword(Settings.get("server.ssl.key-password"));
+		//		sslContextFactory.setCipherComparator(HTTP2Cipher.COMPARATOR);
+		//		sslContextFactory.setNeedClientAuth(true);
+		//		sslContextFactory.setTrustStorePath(Settings.get("server.ssl.trust-store").replace("classpath:", "src/test/resources/"));
+		//		sslContextFactory.setTrustStorePassword(Settings.get("server.ssl.trust-store-password"));
+
+		final HttpConnectionFactory http = new HttpConnectionFactory(httpsConfig);
+		final HTTP2ServerConnectionFactory h2 = new HTTP2ServerConnectionFactory(httpsConfig);
+		final ALPNServerConnectionFactory alpn = new ALPNServerConnectionFactory();
+		alpn.setDefaultProtocol(http.getProtocol());
+
+		final SslConnectionFactory ssl = createSslConnectionFactory(alpn);
+
+		final ServerConnector http2Connector = new ServerConnector(server, ssl, alpn, h2, http);
+		http2Connector.setHost(sslListenAddress.getHostString());
+		http2Connector.setPort(sslListenAddress.getPort());
+		server.addConnector(http2Connector);
 
 		return server;
+
+
+		//		final HttpConfiguration config = createHttpConfiguration(sslListenAddress);
+		//		final HttpConnectionFactory httpConnectionFactory = new HttpConnectionFactory(config);
+		//		final HTTP2ServerConnectionFactory http2ConnectionFactory = new HTTP2ServerConnectionFactory(config);
+		//		final ALPNServerConnectionFactory alpnConnectionFactory = createAlpnConnectionFactory(httpConnectionFactory);
+		//		final SslConnectionFactory sslConnectionFactory = createSslConnectionFactory(alpnConnectionFactory);
+		//
+		//		final Server server = new Server();
+		//		//server.setRequestLog(new AsyncNCSARequestLog());
+		//
+		//		final ServerConnector sslConnector = new ServerConnector(server,
+		//				sslConnectionFactory,
+		//				alpnConnectionFactory,
+		//				http2ConnectionFactory,
+		//				httpConnectionFactory);
+		//		sslConnector.setHost(sslListenAddress.getHostString());
+		//		sslConnector.setPort(sslListenAddress.getPort());
+		//		server.addConnector(sslConnector);
+		//
+		//		if (plainListenAddress != null) {
+		//			final ServerConnector plainHttpConnector = new ServerConnector(server, httpConnectionFactory);
+		//			plainHttpConnector.setHost(plainListenAddress.getHostString());
+		//			plainHttpConnector.setPort(plainListenAddress.getPort());
+		//			server.addConnector(plainHttpConnector);
+		//		}
+		//
+		//		return server;
 	}
 
 	private InetSocketAddress getBindAddress(final String bindHost, final int startPort, final int maxIncrements) {
@@ -149,19 +184,15 @@ public class JettyHttpServerImpl implements AutoCloseable {
 		return context;
 	}
 
-	private ALPNServerConnectionFactory createAlpnConnectionFactory(final HttpConnectionFactory httpConnectionFactory) {
-		try {
-			NegotiatingServerConnectionFactory.checkProtocolNegotiationAvailable();
-		} catch (final IllegalStateException e) {
-			throw new IllegalStateException("ALPN must be on the boot classpath using -Xbootclasspath/p:<alpn-jar>. For more information see https://www.eclipse.org/jetty/documentation/9.4.x/alpn-chapter.html", e);
-		}
-		final ALPNServerConnectionFactory alpn = new ALPNServerConnectionFactory();
-		alpn.setDefaultProtocol(httpConnectionFactory.getProtocol());
-		return alpn;
-	}
+	//	private ALPNServerConnectionFactory createAlpnConnectionFactory(final HttpConnectionFactory httpConnectionFactory) {
+	//		final ALPNServerConnectionFactory alpn = new ALPNServerConnectionFactory();
+	//		alpn.setDefaultProtocol(httpConnectionFactory.getProtocol());
+	//		return alpn;
+	//	}
 
 	private SslConnectionFactory createSslConnectionFactory(final ALPNServerConnectionFactory alpn) {
 		final SslContextFactory sslContextFactory = new SslContextFactory();
+		sslContextFactory.setProvider("Conscrypt");
 		sslContextFactory.setKeyStoreResource(Resource.newResource(getClass().getResource("test-keystore.jks")));
 		sslContextFactory.setKeyStorePassword("changeit");
 		sslContextFactory.setCipherComparator(HTTP2Cipher.COMPARATOR);
@@ -170,15 +201,15 @@ public class JettyHttpServerImpl implements AutoCloseable {
 		return ssl;
 	}
 
-	private HttpConfiguration createHttpConfiguration(final InetSocketAddress sslListenAddress) {
-		final HttpConfiguration config = new HttpConfiguration();
-		config.setSecureScheme("https");
-		config.setSecurePort(sslListenAddress.getPort());
-		config.setSendXPoweredBy(false);
-		config.setSendServerVersion(false);
-		config.addCustomizer(new SecureRequestCustomizer());
-		return config;
-	}
+	//	private HttpConfiguration createHttpConfiguration(final InetSocketAddress sslListenAddress) {
+	//		final HttpConfiguration config = new HttpConfiguration();
+	//		config.setSecureScheme("https");
+	//		config.setSecurePort(sslListenAddress.getPort());
+	//		config.setSendXPoweredBy(false);
+	//		config.setSendServerVersion(false);
+	//		config.addCustomizer(new SecureRequestCustomizer());
+	//		return config;
+	//	}
 
 	@Override
 	public void close() {

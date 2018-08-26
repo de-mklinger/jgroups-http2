@@ -21,6 +21,7 @@ import java.io.StringWriter;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -77,13 +78,15 @@ public class JGroupsServlet extends HttpServlet {
 
 		final String prefix = "protocol.";
 		final Map<String, String> protocolParameters = new HashMap<>();
-		getServletConfig().getInitParameterNames().asIterator().forEachRemaining(parameterName -> {
+		final Enumeration<String> initParameterNames = getServletConfig().getInitParameterNames();
+		while (initParameterNames.hasMoreElements()) {
+			final String parameterName = initParameterNames.nextElement();
 			if (parameterName.startsWith(prefix)) {
 				final String key = parameterName.substring(prefix.length());
 				final String value = getServletConfig().getInitParameter(parameterName);
 				protocolParameters.put(key, value);
 			}
-		});
+		}
 
 		final SizeValue maxContentSize = SizeValue.parseSizeValue(getSetting("maxContentSize", Optional.of(() -> "500k")));
 		if (maxContentSize.singles() > Integer.MAX_VALUE) {
