@@ -26,7 +26,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
-import java.util.concurrent.ForkJoinPool;
 import java.util.function.Supplier;
 
 import javax.servlet.AsyncContext;
@@ -186,14 +185,21 @@ public class JGroupsServlet extends HttpServlet {
 		final HTTP httpProtocol = (HTTP) channel.getProtocolStack().getTransport();
 		this.receiver = httpProtocol;
 
-		ForkJoinPool.commonPool().execute(() -> {
+		// Using a custom thread here (instead of ForkJoinPool.commonPool() in previous
+		// implementation) to be in the right Thread and context class loader hierarchy.
+		// Other threads and thread pools may be initialized lazy by this call. We want
+		// them all to be children of our current thread and use the same context class
+		// loader.
+		final Thread connectThread = new Thread(() -> {
 			try {
 				channel.connect(clusterName);
 				onChannelConnected(channel, clusterName);
-			} catch (final Exception e) {
+			} catch (final Throwable e) {
 				onChannelConnectError(channel, clusterName, e);
 			}
 		});
+		connectThread.setName("jgroups-channel-connect");
+		connectThread.start();
 	}
 
 	private String getSetting(final String name, final Optional<Supplier<String>> def) throws ServletException {
@@ -260,7 +266,7 @@ public class JGroupsServlet extends HttpServlet {
 	 * @param clusterName The name of the cluster that was tried to connect
 	 * @param e The error
 	 */
-	protected void onChannelConnectError(final JChannel channel, final String clusterName, final Exception e) {
+	protected void onChannelConnectError(final JChannel channel, final String clusterName, final Throwable e) {
 		LOG.error("Error connecting to cluster '{}'", clusterName, e);
 	}
 }
