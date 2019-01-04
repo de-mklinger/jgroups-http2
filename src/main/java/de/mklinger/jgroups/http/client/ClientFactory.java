@@ -3,6 +3,8 @@ package de.mklinger.jgroups.http.client;
 import static de.mklinger.jgroups.http.client.ClientConstants.*;
 
 import java.security.KeyStore;
+import java.time.Duration;
+import java.time.format.DateTimeParseException;
 import java.util.Optional;
 import java.util.Properties;
 
@@ -41,6 +43,24 @@ public class ClientFactory {
 			final String truststorePassword = clientProperties.getProperty(TRUSTSTORE_PASSWORD);
 			final KeyStore trustStore = Keystores.load(truststoreLocation,  Optional.ofNullable(truststorePassword));
 			clientBuilder.trustStore(trustStore);
+		}
+
+		final String connectTimeout = clientProperties.getProperty(CONNECT_TIMEOUT);
+		if (connectTimeout != null) {
+			Duration d;
+			try {
+				d = Duration.parse(connectTimeout);
+			} catch (final DateTimeParseException e) {
+				// fall back to millis
+				try {
+					d = Duration.ofMillis(Long.parseLong(connectTimeout));
+				} catch (final NumberFormatException e2) {
+					e.addSuppressed(e2);
+					throw e;
+				}
+			}
+			LOG.info("Using HTTP client connect timeout {}", d);
+			clientBuilder.connectTimeout(d);
 		}
 	}
 }

@@ -9,4 +9,5 @@ public interface ClientConstants {
 	String KEY_PASSWORD = "ssl.key-password";
 	String TRUSTSTORE_LOCATION = "ssl.trust-store";
 	String TRUSTSTORE_PASSWORD = "ssl.trust-store-password";
+	String CONNECT_TIMEOUT = "connect-timeout";
 }
