@@ -2,7 +2,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>de.mklinger.jgroups</groupId>
 	<artifactId>jgroups-http2</artifactId>
-	<version>1.11</version>
+	<version>1.12-SNAPSHOT</version>
 
 	<properties>
 		<java.version>1.8</java.version>
@@ -47,7 +47,7 @@
 	<scm>
 		<connection>scm:git:git@github.com:de-mklinger/jgroups-http2.git</connection>
 		<developerConnection>scm:git:git@github.com:de-mklinger/jgroups-http2.git</developerConnection>
-		<tag>jgroups-http2-1.11</tag>
+		<tag>HEAD</tag>
 		<url>https://github.com/de-mklinger/jgroups-http2</url>
 	</scm>
 
