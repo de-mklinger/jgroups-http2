@@ -10,6 +10,8 @@
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 		<maven.compiler.source>${java.version}</maven.compiler.source>
 		<maven.compiler.target>${java.version}</maven.compiler.target>
+		
+		<jgroups.version>4.0.16.Final</jgroups.version>
 		<jackson.version>2.7.3</jackson.version>
 		<slf4j.version>1.7.20</slf4j.version>
 		<jetty.version>9.4.11.v20180605</jetty.version>
@@ -64,13 +66,13 @@
 		<dependency>
 			<groupId>org.jgroups</groupId>
 			<artifactId>jgroups</artifactId>
-			<version>4.0.0.Final</version>
+			<version>${jgroups.version}</version>
 		</dependency>
 
 		<dependency>
 			<groupId>javax.servlet</groupId>
 			<artifactId>javax.servlet-api</artifactId>
-			<version>4.0.0-b01</version>
+			<version>4.0.1</version>
 		</dependency>
 		<dependency>
 			<groupId>org.slf4j</groupId>
