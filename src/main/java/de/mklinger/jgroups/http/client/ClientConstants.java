@@ -4,6 +4,7 @@ package de.mklinger.jgroups.http.client;
  * @author Marc Klinger - mklinger[at]mklinger[dot]de
  */
 public interface ClientConstants {
+	String CLIENT_FACTORY_CLASSNAME = "client-factory";
 	String KEYSTORE_LOCATION = "ssl.key-store";
 	String KEYSTORE_PASSWORD = "ssl.key-store-password";
 	String KEY_PASSWORD = "ssl.key-password";

@@ -36,7 +36,9 @@ import de.mklinger.commons.httpclient.BodyHandlers;
 import de.mklinger.commons.httpclient.BodyProviders;
 import de.mklinger.commons.httpclient.HttpClient;
 import de.mklinger.commons.httpclient.HttpRequest;
+import de.mklinger.jgroups.http.client.ClientConstants;
 import de.mklinger.jgroups.http.client.ClientFactory;
+import de.mklinger.jgroups.http.client.DefaultClientFactory;
 import de.mklinger.jgroups.http.common.Closeables;
 import de.mklinger.jgroups.http.common.PropertiesString;
 import de.mklinger.jgroups.http.server.HttpReceiver;
@@ -65,19 +67,16 @@ public class HTTP extends TP implements HttpReceiver {
 			writable = false)
 	protected String external_path = "/jgroups";
 
+	private ClientFactory clientFactory;
+
 	private HttpClient client;
-	private Properties httpClientProperties;
 
 	@Override
 	public void start() throws Exception {
 		requireValidServicePath();
 
-		final String httpClientClassName = null;
 		try {
-			if (httpClientProperties == null && client_props != null && !client_props.isEmpty()) {
-				httpClientProperties = PropertiesString.fromString(client_props, client_props_sep);
-			}
-			client = ClientFactory.newClient(httpClientProperties);
+			this.client = newClient();
 			super.start();
 		} catch (final Exception e) {
 			try {
@@ -85,7 +84,44 @@ public class HTTP extends TP implements HttpReceiver {
 			} catch (final Exception ex) {
 				e.addSuppressed(ex);
 			}
-			throw new RuntimeException("Error instantiating http client class " + httpClientClassName, e);
+			throw new RuntimeException("Error starting HTTP", e);
+		}
+	}
+
+	private HttpClient newClient() {
+		final Properties clientProperties;
+		if (client_props != null && !client_props.isEmpty()) {
+			clientProperties = PropertiesString.fromString(client_props, client_props_sep);
+		} else {
+			clientProperties = new Properties();
+		}
+
+		final ClientFactory clientFactory;
+		if (this.clientFactory != null) {
+			clientFactory = this.clientFactory;
+		} else {
+			clientFactory = newClientFactory(clientProperties);
+		}
+
+		return clientFactory.newClient(clientProperties);
+	}
+
+	public void setClientFactory(final ClientFactory clientFactory) {
+		this.clientFactory = clientFactory;
+	}
+
+	private ClientFactory newClientFactory(final Properties httpClientProperties) {
+		final String clientFactoryClassName = httpClientProperties.getProperty(ClientConstants.CLIENT_FACTORY_CLASSNAME);
+		if (clientFactoryClassName != null) {
+			LOG.info("Using client factory {}", clientFactoryClassName);
+			try {
+				return (ClientFactory) Class.forName(clientFactoryClassName).newInstance();
+			} catch (InstantiationException | IllegalAccessException | ClassNotFoundException e) {
+				throw new RuntimeException("Error instantiating client factory " + clientFactoryClassName);
+			}
+		} else {
+			LOG.info("Using default client factory");
+			return new DefaultClientFactory();
 		}
 	}
 
