@@ -226,7 +226,14 @@ public class JGroupsServlet extends HttpServlet {
 
 	@Override
 	public void destroy() {
-		Closeables.closeUnchecked(channel);
+		if (channel != null) {
+			try {
+				onChannelClose(channel);
+			} catch (final Exception e) {
+				LOG.warn("Error in onChannelClose callback", e);
+			}
+			Closeables.closeUnchecked(channel);
+		}
 	}
 
 	@Override
@@ -268,5 +275,13 @@ public class JGroupsServlet extends HttpServlet {
 	 */
 	protected void onChannelConnectError(final JChannel channel, final String clusterName, final Throwable e) {
 		LOG.error("Error connecting to cluster '{}'", clusterName, e);
+	}
+
+	/**
+	 * Callback method for sub-classes. Default implementation does nothing.
+	 * Called before the channel is actually closed.
+	 * @param channel The channel about to be closed
+	 */
+	protected void onChannelClose(final JChannel channel) {
 	}
 }
