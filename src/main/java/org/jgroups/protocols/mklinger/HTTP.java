@@ -16,6 +16,7 @@
 package org.jgroups.protocols.mklinger;
 
 import java.net.ConnectException;
+import java.net.SocketTimeoutException;
 import java.net.URI;
 import java.util.Collections;
 import java.util.Properties;
@@ -185,7 +186,7 @@ public class HTTP extends TP implements HttpReceiver {
 			if (ex instanceof CompletionException) {
 				ex = ex.getCause();
 			}
-			if (ex instanceof ConnectException) {
+			if (ex instanceof ConnectException || ex instanceof SocketTimeoutException) {
 				LOG.info("Send to {}: Failed: {}", destIpAddress, ex.toString());
 			} else {
 				LOG.warn("Send to {}: Failed:", destIpAddress, ex);
