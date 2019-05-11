@@ -38,11 +38,11 @@ public class HttpClusterIT {
 
 	@Test
 	public void test() throws InterruptedException, TimeoutException {
-		try (final JettyHttpServerImpl server1 = new JettyHttpServerImpl("127.0.0.1", 8443, 100)) {
+		try (final JettyHttpServerImpl server1 = new JettyHttpServerImpl("127.0.0.1", FreePort.get(8443), 100)) {
 
 			final JChannel channel1;
 
-			try (final JettyHttpServerImpl server2 = new JettyHttpServerImpl("127.0.0.1", 8444, 100)) {
+			try (final JettyHttpServerImpl server2 = new JettyHttpServerImpl("127.0.0.1", FreePort.get(8444), 100)) {
 
 				initServlet(server1, server2);
 				server1.start();
