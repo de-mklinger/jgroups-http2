@@ -5,7 +5,6 @@ import static de.mklinger.jgroups.http.client.ClientConstants.*;
 import java.security.KeyStore;
 import java.time.Duration;
 import java.time.format.DateTimeParseException;
-import java.util.Optional;
 import java.util.Properties;
 
 import org.slf4j.Logger;
@@ -13,7 +12,7 @@ import org.slf4j.LoggerFactory;
 
 import de.mklinger.commons.httpclient.HttpClient;
 import de.mklinger.commons.httpclient.HttpClient.Builder;
-import de.mklinger.jgroups.http.common.Keystores;
+import de.mklinger.micro.keystores.KeyStores;
 
 /**
  * @author Marc Klinger - mklinger[at]mklinger[dot]de
@@ -39,7 +38,7 @@ public class DefaultClientFactory implements ClientFactory {
 		if (keystoreLocation != null) {
 			LOG.info("Using HTTP client keystore from '{}'", keystoreLocation);
 			final String keystorePassword = clientProperties.getProperty(KEYSTORE_PASSWORD);
-			final KeyStore keyStore = Keystores.load(keystoreLocation, Optional.ofNullable(keystorePassword));
+			final KeyStore keyStore = KeyStores.load(keystoreLocation, keystorePassword);
 			final String keyPassword = clientProperties.getProperty(KEY_PASSWORD, keystorePassword);
 			clientBuilder.keyStore(keyStore, keyPassword);
 		}
@@ -50,7 +49,7 @@ public class DefaultClientFactory implements ClientFactory {
 		if (truststoreLocation != null) {
 			LOG.info("Using HTTP client truststore from '{}'", truststoreLocation);
 			final String truststorePassword = clientProperties.getProperty(TRUSTSTORE_PASSWORD);
-			final KeyStore trustStore = Keystores.load(truststoreLocation,  Optional.ofNullable(truststorePassword));
+			final KeyStore trustStore = KeyStores.load(truststoreLocation, truststorePassword);
 			clientBuilder.trustStore(trustStore);
 		}
 	}

@@ -68,7 +68,7 @@ public class HttpClusterIT {
 		servletHolder.setInitParameter("protocol.mklinger.HTTP.external_addr", server.getHttpsBindAddress().getHostString());
 		servletHolder.setInitParameter("protocol.mklinger.HTTP.external_port", String.valueOf(server.getHttpsBindAddress().getPort()));
 		servletHolder.setInitParameter("protocol.mklinger.HTTP.client_props",
-				"ssl.trust-store=" + HttpClusterIT.class.getResource("test-keystore.jks").toExternalForm());
+				"ssl.trust-store=" + HttpClusterIT.class.getResource("ca-cert.p12").toExternalForm());
 
 		final InetSocketAddress otherServerAddress = otherServer.getHttpsBindAddress();
 		servletHolder.setInitParameter("protocol.TCPPING.initial_hosts",

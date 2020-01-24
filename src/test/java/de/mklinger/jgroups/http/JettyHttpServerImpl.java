@@ -191,10 +191,10 @@ public class JettyHttpServerImpl implements AutoCloseable {
 	//	}
 
 	private SslConnectionFactory createSslConnectionFactory(final ALPNServerConnectionFactory alpn) {
-		final SslContextFactory sslContextFactory = new SslContextFactory();
+		final SslContextFactory.Server sslContextFactory = new SslContextFactory.Server();
 		sslContextFactory.setProvider("Conscrypt");
-		sslContextFactory.setKeyStoreResource(Resource.newResource(getClass().getResource("test-keystore.jks")));
-		sslContextFactory.setKeyStorePassword("changeit");
+		sslContextFactory.setKeyStoreResource(Resource.newResource(getClass().getResource("server.p12")));
+		sslContextFactory.setKeyStorePassword("");
 		sslContextFactory.setCipherComparator(HTTP2Cipher.COMPARATOR);
 		sslContextFactory.setUseCipherSuitesOrder(true);
 		final SslConnectionFactory ssl = new SslConnectionFactory(sslContextFactory, alpn.getProtocol());
