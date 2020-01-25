@@ -25,6 +25,7 @@ import javax.servlet.ServletInputStream;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import org.jgroups.protocols.mklinger.HostAddress;
 import org.jgroups.stack.IpAddress;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,7 +58,7 @@ public class JGroupsReadListener implements ReadListener {
 		try {
 			final String senderAddress = Objects.requireNonNull(request.getHeader("X-Sender"), "Missing header 'X-Sender'");
 			LOG.debug("Sender: {}", senderAddress);
-			return new IpAddress(senderAddress);
+			return new HostAddress(senderAddress);
 		} catch (final Exception e) {
 			throw new BadRequestException(e);
 		}

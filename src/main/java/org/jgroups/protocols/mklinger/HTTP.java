@@ -25,6 +25,7 @@ import java.util.concurrent.CompletionException;
 import org.jgroups.Address;
 import org.jgroups.PhysicalAddress;
 import org.jgroups.annotations.Property;
+import org.jgroups.conf.ClassConfigurator;
 import org.jgroups.protocols.PingData;
 import org.jgroups.protocols.TP;
 import org.jgroups.stack.IpAddress;
@@ -71,6 +72,10 @@ public class HTTP extends TP implements HttpReceiver {
 	private ClientFactory clientFactory;
 
 	private HttpClient client;
+
+	static {
+		ClassConfigurator.add((short)2000, HostAddress.class);
+	}
 
 	@Override
 	public void start() throws Exception {
@@ -199,19 +204,37 @@ public class HTTP extends TP implements HttpReceiver {
 	private URI getServiceUrl(final IpAddress destIpAddress) {
 		final StringBuilder sb = new StringBuilder();
 		sb.append("https://");
-		final String hostAddress = destIpAddress.getIpAddress().getHostAddress();
-		if (hostAddress.indexOf(':') != -1) {
-			// IPv6 address with colons
-			sb.append('[');
-			sb.append(hostAddress);
-			sb.append(']');
+
+		final String hostName = getHostName(destIpAddress);
+		if (hostName != null) {
+			LOG.debug("Using host name for service URL: {}", hostName);
+			sb.append(hostName);
 		} else {
-			sb.append(hostAddress);
+			final String hostAddress = destIpAddress.getIpAddress().getHostAddress();
+			LOG.debug("Using ip address for service URL: {}", hostAddress);
+			if (hostAddress.indexOf(':') != -1) {
+				// IPv6 address with colons
+				sb.append('[');
+				sb.append(hostAddress);
+				sb.append(']');
+			} else {
+				sb.append(hostAddress);
+			}
 		}
+
 		sb.append(':');
 		sb.append(destIpAddress.getPort());
 		sb.append(external_path);
+
 		return URI.create(sb.toString());
+	}
+
+	private String getHostName(final IpAddress ipAddress) {
+		if (ipAddress instanceof HostAddress) {
+			return ((HostAddress)ipAddress).getHostName();
+		} else {
+			return null;
+		}
 	}
 
 	public HttpClient getClient() {
@@ -232,7 +255,7 @@ public class HTTP extends TP implements HttpReceiver {
 		if (external_addr == null || external_port == 0) {
 			throw new IllegalStateException("External address is not set");
 		}
-		return new IpAddress(external_addr, external_port);
+		return new HostAddress(external_addr, external_port);
 	}
 
 	// Implementation taken from org.jgroups.protocols.TP.sendToSingleMember(Address, byte[], int, int)

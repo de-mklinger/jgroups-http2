@@ -38,11 +38,11 @@ public class HttpClusterIT {
 
 	@Test
 	public void test() throws InterruptedException, TimeoutException {
-		try (final JettyHttpServerImpl server1 = new JettyHttpServerImpl("127.0.0.1", FreePort.get(8443), 100)) {
+		try (final JettyHttpServerImpl server1 = new JettyHttpServerImpl("localhost", FreePort.get(8443), 100)) {
 
 			final JChannel channel1;
 
-			try (final JettyHttpServerImpl server2 = new JettyHttpServerImpl("127.0.0.1", FreePort.get(8444), 100)) {
+			try (final JettyHttpServerImpl server2 = new JettyHttpServerImpl("localhost", FreePort.get(8444), 100)) {
 
 				initServlet(server1, server2);
 				server1.start();
@@ -71,9 +71,8 @@ public class HttpClusterIT {
 				"ssl.trust-store=" + HttpClusterIT.class.getResource("ca-cert.p12").toExternalForm());
 
 		final InetSocketAddress otherServerAddress = otherServer.getHttpsBindAddress();
-		servletHolder.setInitParameter("protocol.TCPPING.initial_hosts",
-				otherServerAddress.getHostString() + "[" + otherServerAddress.getPort() + "]");
-		servletHolder.setInitParameter("protocol.TCPPING.port_range", "0");
+		servletHolder.setInitParameter("protocol.mklinger.HTTPPING.initial_ping_addresses",
+				otherServerAddress.getHostString() + ":" + otherServerAddress.getPort());
 	}
 
 	private static JChannel getChannel(final JettyHttpServerImpl server1) {
@@ -97,6 +96,7 @@ public class HttpClusterIT {
 			}
 		});
 		final long timeoutMillis = TimeUnit.SECONDS.toMillis(30);
+		//		final long timeoutMillis = TimeUnit.HOURS.toMillis(1);
 		final long startTimeMillis = System.currentTimeMillis();
 		while (viewSize.get() != size) {
 			final long nowMillis = System.currentTimeMillis();

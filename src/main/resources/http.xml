@@ -4,10 +4,9 @@
     <mklinger.HTTP
     	enable_diagnostics="false" />
 
-    <TCPPING async_discovery="true"
-             initial_hosts="${jgroups.tcpping.initial_hosts:localhost[8443]}"
-             return_entire_cache="true"
-             port_range="1"/>
+    <mklinger.HTTPPING async_discovery="true"
+             return_entire_cache="true"/>
+
     <MERGE3  min_interval="10000"
              max_interval="30000"/>
     <!-- 
