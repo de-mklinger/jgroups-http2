@@ -12,7 +12,6 @@
 		<maven.compiler.target>${java.version}</maven.compiler.target>
 		
 		<jgroups.version>4.0.23.Final</jgroups.version>
-		<jackson.version>2.7.3</jackson.version>
 		<slf4j.version>1.7.20</slf4j.version>
 		<jetty.version>9.4.26.v20200117</jetty.version>
 		<httpclient.version>0.6</httpclient.version>
