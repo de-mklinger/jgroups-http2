@@ -16,14 +16,16 @@
 package de.mklinger.jgroups.http;
 
 import java.net.InetSocketAddress;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BooleanSupplier;
 
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.jgroups.JChannel;
-import org.jgroups.ReceiverAdapter;
-import org.jgroups.View;
+import org.jgroups.Message;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,7 +39,9 @@ public class HttpClusterIT {
 	private static final Logger LOG = LoggerFactory.getLogger(HttpClusterIT.class);
 
 	@Test
-	public void test() throws InterruptedException, TimeoutException {
+	public void test() throws Exception {
+		final Set<Object> received = Collections.synchronizedSet(new HashSet<>());
+
 		try (final JettyHttpServerImpl server1 = new JettyHttpServerImpl("localhost", FreePort.get(8443), 100)) {
 
 			final JChannel channel1;
@@ -47,15 +51,23 @@ public class HttpClusterIT {
 				initServlet(server1, server2);
 				server1.start();
 				channel1 = getChannel(server1);
+				channel1.setReceiver(message -> received.add(message.getObject()));
 
 				waitForViewSize(channel1, 1);
 
 				initServlet(server2, server1);
 				server2.start();
 				final JChannel channel2 = getChannel(server2);
+				channel2.setReceiver(message -> received.add(message.getObject()));
 
 				waitForViewSize(channel1, 2);
 				waitForViewSize(channel2, 2);
+
+				channel1.send(new Message(null, "message from channel1"));
+				channel2.send(new Message(null, "message from channel2"));
+
+				waitFor(() -> received.contains("message from channel1"), "message from channel1");
+				waitFor(() -> received.contains("message from channel2"), "message from channel2");
 			}
 
 			waitForViewSize(channel1, 1);
@@ -80,31 +92,25 @@ public class HttpClusterIT {
 	}
 
 	private static void waitForViewSize(final JChannel channel, final int size) throws InterruptedException, TimeoutException {
-		LOG.info("##### Waiting for view size: {}", size);
-		final AtomicInteger viewSize;
-		final View view = channel.getView();
-		if (view != null) {
-			viewSize = new AtomicInteger(view.getMembers().size());
-		} else {
-			viewSize = new AtomicInteger(0);
-		}
-		channel.setReceiver(new ReceiverAdapter() {
-			@Override
-			public void viewAccepted(final View view) {
-				LOG.info("##### VIEW: {}", view);
-				viewSize.set(view.getMembers().size());
-			}
-		});
+		waitFor(() -> channel.getView() != null
+				&& channel.getView().getMembers().size() == size,
+				"view size " + size);
+	}
+
+	private static void waitFor(BooleanSupplier predicate, String description) throws InterruptedException, TimeoutException {
+		LOG.info("Waiting for {}", description);
+
 		final long timeoutMillis = TimeUnit.SECONDS.toMillis(30);
-		//		final long timeoutMillis = TimeUnit.HOURS.toMillis(1);
 		final long startTimeMillis = System.currentTimeMillis();
-		while (viewSize.get() != size) {
+
+		while (!predicate.getAsBoolean()) {
 			final long nowMillis = System.currentTimeMillis();
 			if (nowMillis - startTimeMillis > timeoutMillis) {
-				throw new TimeoutException("Timeout waiting for view size " + size);
+				throw new TimeoutException("Timeout waiting for " + description);
 			}
 			Thread.sleep(1);
 		}
-		LOG.info("##### Have expected view size: {}", size);
+
+		LOG.info("Have {}", description);
 	}
 }
