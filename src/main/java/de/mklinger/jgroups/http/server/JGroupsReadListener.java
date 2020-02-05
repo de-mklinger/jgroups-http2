@@ -15,7 +15,6 @@
  */
 package de.mklinger.jgroups.http.server;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Objects;
 
@@ -42,8 +41,8 @@ public class JGroupsReadListener implements ReadListener {
 	private final IpAddress sender;
 	private final HttpReceiver receiver;
 	private final int maxContentLength;
-	private final ByteArrayOutputStream data;
-	private final byte[] buf = new byte[1024];
+	private DirectAccessByteArrayOutputStream data;
+	private byte[] buf;
 
 	public JGroupsReadListener(final AsyncContext asyncContext, final HttpReceiver receiver, final int maxContentLength) throws BadRequestException {
 		this.asyncContext = asyncContext;
@@ -51,7 +50,9 @@ public class JGroupsReadListener implements ReadListener {
 		this.maxContentLength = maxContentLength;
 		final HttpServletRequest request = (HttpServletRequest) asyncContext.getRequest();
 		this.sender = getSender(request);
-		this.data = new ByteArrayOutputStream(getBufferSize(request));
+		final int dataSize = getDataSize(request);
+		this.buf = new byte[Math.min(4096, dataSize)];
+		this.data = new DirectAccessByteArrayOutputStream(dataSize);
 	}
 
 	private IpAddress getSender(final HttpServletRequest request) throws BadRequestException {
@@ -64,11 +65,11 @@ public class JGroupsReadListener implements ReadListener {
 		}
 	}
 
-	private int getBufferSize(final HttpServletRequest request) {
+	private int getDataSize(final HttpServletRequest request) {
 		final long contentLengthLong = request.getContentLengthLong();
 		if (contentLengthLong == -1) {
-			LOG.info("No Content-Length header available");
-			return 1024;
+			LOG.warn("No Content-Length header available");
+			return 4096;
 		} else if (contentLengthLong > maxContentLength) {
 			throw new IllegalArgumentException("Content too large: " + new SizeValue(contentLengthLong));
 		} else {
@@ -100,9 +101,14 @@ public class JGroupsReadListener implements ReadListener {
 	@Override
 	public void onAllDataRead() throws IOException {
 		try {
-			final byte[] messageData = data.toByteArray();
-			LOG.debug("Message read, calling receive()");
-			receiver.receive(sender, messageData, 0, messageData.length);
+			final byte[] messageData = data.getBuffer();
+			final int messageLen = data.size();
+
+			data = null;
+			buf = null;
+
+			LOG.debug("Message read with {} bytes, calling receive()", messageData.length);
+			receiver.receive(sender, messageData, 0, messageLen);
 			asyncContext.complete();
 		} catch (final Exception e) {
 			LOG.error("Error in onAllDataRead()", e);
