@@ -25,7 +25,6 @@ import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Optional;
 import java.util.function.Supplier;
 
 import javax.servlet.AsyncContext;
@@ -63,18 +62,45 @@ import de.mklinger.jgroups.http.common.SizeValue;
 public class JGroupsServlet extends HttpServlet {
 	private static final String PROPS_PREFIX = "de.mklinger.jgroups.http.";
 	public static final String CHANNEL_ATTRIBUTE = PROPS_PREFIX + "channel";
+	private static final String RECEIVER_ATTRIBUTE = PROPS_PREFIX + "receiver";
+	private static final String MAX_CONTENT_LENGTH_ATTRIBUTE = PROPS_PREFIX + "maxContentLength";
 
 	private static final long serialVersionUID = 1L;
 	private static final Logger LOG = LoggerFactory.getLogger(JGroupsServlet.class);
 
-	private int maxContentLength;
-	private HttpReceiver receiver;
-	private JChannel channel;
-
 	@Override
 	public void init() throws ServletException {
-		final String clusterName = getSetting("cluster.name", Optional.of(() -> "jgroupscluster"));
+		initMaxContentSize();
 
+		final ProtocolStackConfigurator protocolStackConfigurator = initProtocolStack();
+		final JChannel channel = createChannel(protocolStackConfigurator);
+
+		final boolean connect = "true".equals(getSetting("connect", () -> "true"));
+		if (connect) {
+			final String clusterName = getSetting("clusterName",
+					() -> getSetting("cluster.name", // support "cluster.name" for compatibility with earlier versions
+							() -> "jgroupscluster"));
+			connectChannel(clusterName, channel);
+		}
+	}
+
+	private void initMaxContentSize() throws ServletException {
+		final SizeValue maxContentSize = SizeValue.parseSizeValue(getSetting("maxContentSize", () -> "500k"));
+		if (maxContentSize.singles() > Integer.MAX_VALUE) {
+			throw new IllegalArgumentException("Max content size too large: " + maxContentSize);
+		}
+
+		getServletContext().setAttribute(MAX_CONTENT_LENGTH_ATTRIBUTE, (int)maxContentSize.singles());
+	}
+
+	private ProtocolStackConfigurator initProtocolStack() throws ServletException {
+		final Map<String, String> protocolParameters = getProtocolParameters();
+		final String baseConfigLocation = getSetting("baseConfigLocation", () -> "classpath:http.xml");
+		final ProtocolStackConfigurator protocolStackConfigurator = getProtocolStackConfigurator(baseConfigLocation, protocolParameters);
+		return protocolStackConfigurator;
+	}
+
+	private Map<String, String> getProtocolParameters() {
 		final String prefix = "protocol.";
 		final Map<String, String> protocolParameters = new HashMap<>();
 		final Enumeration<String> initParameterNames = getServletConfig().getInitParameterNames();
@@ -86,29 +112,11 @@ public class JGroupsServlet extends HttpServlet {
 				protocolParameters.put(key, value);
 			}
 		}
-
-		final SizeValue maxContentSize = SizeValue.parseSizeValue(getSetting("maxContentSize", Optional.of(() -> "500k")));
-		if (maxContentSize.singles() > Integer.MAX_VALUE) {
-			throw new IllegalArgumentException("Max content size too large: " + maxContentSize);
-		}
-		this.maxContentLength = (int)maxContentSize.singles();
-
-		final String baseConfigLocation = getSetting("baseConfigLocation", Optional.of(() -> "classpath:http.xml"));
-		final ProtocolStackConfigurator protocolStackConfigurator = getProtocolStackConfigurator(baseConfigLocation, protocolParameters);
-		initChannel(clusterName, protocolStackConfigurator);
+		return protocolParameters;
 	}
 
 	public ProtocolStackConfigurator getProtocolStackConfigurator(final String baseConfigLocation, final Map<String, String> protocolParameters) {
-		if (baseConfigLocation == null || baseConfigLocation.isEmpty()) {
-			throw new IllegalArgumentException();
-		}
-
-		Document doc;
-		try (InputStream in = newInputStream(baseConfigLocation)) {
-			doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(in);
-		} catch (SAXException | IOException | ParserConfigurationException e) {
-			throw new IllegalArgumentException("Error loading configuration: " + baseConfigLocation, e);
-		}
+		final Document doc = loadBaseConfig(baseConfigLocation);
 
 		final NodeList protocolElements = doc.getDocumentElement().getChildNodes();
 		for (int i = 0; i < protocolElements.getLength(); i++) {
@@ -117,17 +125,7 @@ public class JGroupsServlet extends HttpServlet {
 				continue;
 			}
 			final Element element = (Element) n;
-			final String protocolName = element.getNodeName();
-
-			final String prefix = protocolName + ".";
-
-			for (final Entry<String, String> e : protocolParameters.entrySet()) {
-				final String key = e.getKey();
-				if (key.startsWith(prefix)) {
-					final String property = key.substring(prefix.length());
-					element.setAttribute(property, e.getValue());
-				}
-			}
+			applyProtocolParameters(element, protocolParameters);
 		}
 
 		if (LOG.isDebugEnabled()) {
@@ -140,6 +138,32 @@ public class JGroupsServlet extends HttpServlet {
 			throw new RuntimeException("Error parsing JGroups xml", e);
 		}
 
+	}
+
+	private Document loadBaseConfig(final String baseConfigLocation) {
+		if (baseConfigLocation == null || baseConfigLocation.isEmpty()) {
+			throw new IllegalArgumentException();
+		}
+
+		try (InputStream in = newInputStream(baseConfigLocation)) {
+			return DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(in);
+		} catch (SAXException | IOException | ParserConfigurationException e) {
+			throw new IllegalArgumentException("Error loading configuration: " + baseConfigLocation, e);
+		}
+	}
+
+	private void applyProtocolParameters(Element element, Map<String, String> protocolParameters) {
+		final String protocolName = element.getNodeName();
+
+		final String prefix = protocolName + ".";
+
+		for (final Entry<String, String> e : protocolParameters.entrySet()) {
+			final String key = e.getKey();
+			if (key.startsWith(prefix)) {
+				final String property = key.substring(prefix.length());
+				element.setAttribute(property, e.getValue());
+			}
+		}
 	}
 
 	private InputStream newInputStream(final String configLocation) throws IOException {
@@ -173,18 +197,26 @@ public class JGroupsServlet extends HttpServlet {
 		}
 	}
 
-	private void initChannel(final String clusterName, final ProtocolStackConfigurator configurator) throws ServletException {
+	private JChannel createChannel(final ProtocolStackConfigurator configurator) throws ServletException {
+		JChannel channel;
 		try {
-			this.channel = new JChannel(configurator);
+			channel = new JChannel(configurator);
 		} catch (final Exception e) {
 			throw new ServletException("Error creating channel", e);
 		}
-		getServletContext().setAttribute(CHANNEL_ATTRIBUTE, this.channel);
-		onChannelCreated(this.channel);
+		getServletContext().setAttribute(CHANNEL_ATTRIBUTE, channel);
 
 		final HTTP httpProtocol = (HTTP) channel.getProtocolStack().getTransport();
-		this.receiver = httpProtocol;
+		if (httpProtocol == null) {
+			throw new IllegalStateException("HTTP protocol not found in channel protocol stack");
+		}
+		getServletContext().setAttribute(RECEIVER_ATTRIBUTE, httpProtocol);
 
+		onChannelCreated(channel);
+		return channel;
+	}
+
+	private void connectChannel(final String clusterName, JChannel channel) {
 		// Using a custom thread here (instead of ForkJoinPool.commonPool() in previous
 		// implementation) to be in the right Thread and context class loader hierarchy.
 		// Other threads and thread pools may be initialized lazy by this call. We want
@@ -202,7 +234,7 @@ public class JGroupsServlet extends HttpServlet {
 		connectThread.start();
 	}
 
-	private String getSetting(final String name, final Optional<Supplier<String>> def) throws ServletException {
+	private String getSetting(final String name, final Supplier<String> def) {
 		String value;
 		final String systemPropertyName = PROPS_PREFIX + name;
 		value = System.getProperty(systemPropertyName);
@@ -217,16 +249,20 @@ public class JGroupsServlet extends HttpServlet {
 			return value;
 		}
 		LOG.debug("Init parameter not set: '{}'", name);
-		value = def
-				.orElseThrow(() -> new ServletException("Missing required setting system property '" + systemPropertyName + "' or init parameter '" + name + "'"))
-				.get();
-		LOG.debug("Using fallback value for setting '{}': '{}'", name, value);
+		if (def == null) {
+			throw new IllegalArgumentException("Missing required setting system property '" + systemPropertyName + "' or init parameter '" + name + "'");
+		} else {
+			value = def.get();
+			LOG.debug("Using fallback value for setting '{}': '{}'", name, value);
+		}
 		return value;
 	}
 
 	@Override
 	public void destroy() {
+		final JChannel channel = (JChannel) getServletContext().getAttribute(CHANNEL_ATTRIBUTE);
 		if (channel != null) {
+			getServletContext().removeAttribute(CHANNEL_ATTRIBUTE);
 			try {
 				onChannelClose(channel);
 			} catch (final Exception e) {
@@ -239,6 +275,14 @@ public class JGroupsServlet extends HttpServlet {
 	@Override
 	protected void service(final HttpServletRequest request, final HttpServletResponse response) throws ServletException, IOException {
 		LOG.debug("Service: {}", request.getMethod(), request.getRequestURL());
+
+		final HttpReceiver receiver = (HttpReceiver) getServletContext().getAttribute(RECEIVER_ATTRIBUTE);
+		if (receiver == null) {
+			throw new IllegalStateException("No receiver");
+		}
+
+		final int maxContentLength = (int) getServletContext().getAttribute(MAX_CONTENT_LENGTH_ATTRIBUTE);
+
 		final AsyncContext asyncContext = request.startAsync();
 		final ServletInputStream inputStream = request.getInputStream();
 		try {
