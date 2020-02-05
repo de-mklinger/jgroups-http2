@@ -251,5 +251,36 @@
 				</plugins>
 			</build>
 		</profile>
+		<profile>
+			<id>doc</id>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.asciidoctor</groupId>
+						<artifactId>asciidoctor-maven-plugin</artifactId>
+						<version>1.5.6</version>
+						<executions>
+					        <execution>
+					            <id>output-html</id>              
+					            <phase>generate-resources</phase> 
+					            <goals>
+					                <goal>process-asciidoc</goal> 
+					            </goals>
+					        </execution>
+					    </executions>
+					    <configuration>
+					    	<sourceDirectory>${project.basedir}</sourceDirectory>
+					    	<resources>
+					    		<resource>
+					    			<directory>${project.basedir}</directory>
+					    			<exclude>**/*</exclude>
+					    		</resource>
+					    	</resources>
+					    	<backend>html</backend>
+					    </configuration>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>		
 	</profiles>
 </project>

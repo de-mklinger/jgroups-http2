@@ -1,0 +1,146 @@
+= JGroups HTTP/2 protocol
+
+[link=http://search.maven.org/#search%7Cgav%7C1%7Cg%3A%22de.mklinger.jgroups%22%20AND%20a%3A%22jgroups-http2%22]
+image::https://img.shields.io/maven-central/v/de.mklinger.jgroups/jgroups-http2.svg[]
+
+
+== What is it?
+
+This is a http://jgroups.org/[JGroups] protocol implementation based on HTTP/2.
+
+JGroups is a messaging toolkit to form clusters. Nodes can discover each other,
+reliably send messages to other nodes or to the whole cluster and detect failure
+of other nodes.
+
+JGroups is often used on a UDP-based node communication protocol, which has the
+advantage of being really fast, but still reliable. Using JGroups over HTTP/2
+may look like a strange idea, but it has enormous advantages:
+
+- A bullet proof web server (like Tomcat or Jetty) can be used to handle incoming
+  messages
+- Transport encryption over HTTPS is secure, not too hard to do right and used 
+  everywhere today.
+- Cloud applications that listen to a HTTPS port anyway, don't need another
+  open port to handle cluster messages 
+- All authorization and authentication methods provided by the Servlet web server
+  of your choice or by third party frameworks can be used for cluster messaging.
+  This includes client certificates for authentication and Spring Security for 
+  authentication and authorization.
+- The HTTP/2 protocol is size optimized, compared to earlier HTTP versions.
+- With HTTP/2, there is only one open socket connection when communicating with 
+  another node. Connections are re-used by default and there is no connection
+  pool. One connection can be used pseudo-concurrently, thanks to HTTP/2 frames.
+
+
+== License
+
+This projects is licensed under https://www.apache.org/licenses/LICENSE-2.0[Apache License 2.0].
+
+
+== Usage
+
+Maven dependency:
+
+[source,xml]
+----
+<dependency>
+  <groupId>de.mklinger.jgroups</groupId>
+  <artifactId>jgroups-http2</artifactId>
+  <version>2.0</version>
+</dependency>
+----
+
+Deploy `JGroupsServlet` into your Jetty, Tomcat or similar web server. 
+HTTP/2 should be enabled on the web server to get best performance.
+
+Configure the servlet using servlet init parameters or system properties.
+In the tables below, names of servlet init parameters are given. System
+properties have the same name prefixed with `"de.mklinger.jgroups.http."`. 
+
+=== Base settings:
+
+|===
+|Init Parameter |Description |Default Value
+
+|`clusterName`
+|The JGroups cluster name to use when connecting
+|`"jgroupscluster"`
+
+|`connect`
+|Connect to the cluster on servlet startup. If set to `false`, the JGroups
+ channel must be connected manually.
+|`true`
+
+|`maxContentSize`
+|Maximum size for JGroups messages.
+|`"500k"`
+
+|`baseConfigLocation`
+|JGroups config file.
+|`"classpath:http.xml"`
+|===
+
+=== HTTP protocol settings:
+
+|===
+|Init Parameter |Description |Default Value
+
+|`protocol.mklinger.HTTP.external_addr`
+|External address where other nodes can reach this node. Must match server
+ certificate's name (or SAN) for HTTPS hostname verification.
+|
+
+|`protocol.mklinger.HTTP.external_port`
+|External port where other nodes can reach this node.
+|
+
+|`protocol.mklinger.HTTP.client_props`
+|HTTP client settings. Comma separated key=value pairs. See below.
+|
+|===
+
+=== HTTPPING protocol settings:
+
+|===
+|Init Parameter |Description |Default Value
+
+|`protocol.mklinger.HTTPPING.initial_ping_addresses`
+|Comma separated list of host:port addresses used for node discovery, 
+ e.g. `host1:8443,host2:443,192.168.9.9:1234`. Note that hostnames 
+ and IP addresses have to match server certificate name (or SANs)
+ for HTTPS hostname verification.
+|
+|===
+
+=== HTTP client settings:
+
+Client settings go to the servlet init parameter `protocol.mklinger.HTTP.client_props` 
+as a comma separated list of key=value pairs. 
+
+|===
+|Client setting |Description |Default Value
+
+|`ssl.key-store`
+|Client certificate with private key. Used when connecting other nodes.
+|
+
+|`ssl.key-store-password`
+|The key store password
+|
+
+|`ssl.key-password`
+|The key password
+|
+
+|`ssl.trust-store`
+|Server certificates and/or CAs to trust when connecting other nodes
+|
+
+|`ssl.trust-store-password`
+|Trust store password
+|
+
+|`connect-timeout`
+|Connect timeout in ISO-8601 duration format (e.g. `PT30S` for 30 seconds) or milliseconds
+|===
+
