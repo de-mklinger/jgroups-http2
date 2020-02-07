@@ -55,6 +55,7 @@ import org.xml.sax.SAXException;
 
 import de.mklinger.jgroups.http.common.Closeables;
 import de.mklinger.jgroups.http.common.SizeValue;
+import de.mklinger.micro.annotations.Nullable;
 
 /**
  * @author Marc Klinger - mklinger[at]mklinger[dot]de - klingerm
@@ -73,7 +74,8 @@ public class JGroupsServlet extends HttpServlet {
 		initMaxContentSize();
 
 		final ProtocolStackConfigurator protocolStackConfigurator = initProtocolStack();
-		final JChannel channel = createChannel(protocolStackConfigurator);
+		final String channelName = getSetting("channelName", () -> null);
+		final JChannel channel = createChannel(protocolStackConfigurator, channelName);
 
 		final boolean connect = "true".equals(getSetting("connect", () -> "true"));
 		if (connect) {
@@ -197,13 +199,18 @@ public class JGroupsServlet extends HttpServlet {
 		}
 	}
 
-	private JChannel createChannel(final ProtocolStackConfigurator configurator) throws ServletException {
+	private JChannel createChannel(final ProtocolStackConfigurator configurator, @Nullable String channelName) throws ServletException {
 		JChannel channel;
 		try {
 			channel = new JChannel(configurator);
 		} catch (final Exception e) {
 			throw new ServletException("Error creating channel", e);
 		}
+
+		if (channelName != null) {
+			channel.setName(channelName);
+		}
+
 		getServletContext().setAttribute(CHANNEL_ATTRIBUTE, channel);
 
 		final HTTP httpProtocol = (HTTP) channel.getProtocolStack().getTransport();
