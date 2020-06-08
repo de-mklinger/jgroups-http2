@@ -179,8 +179,7 @@ public class HTTP extends TP implements HttpReceiver {
 
 		final HttpRequest request = HttpRequest.newBuilder(getServiceUrl(destIpAddress))
 				.header("X-Sender", getLocalPhysicalAddress())
-				.header("Content-Type", "application/x-jgroups-message")
-				.POST(BodyProviders.fromByteArray(data))
+				.POST(BodyProviders.fromByteArray("application/x-jgroups-message", data))
 				.build();
 
 		client.sendAsync(request, BodyHandlers.discard())
