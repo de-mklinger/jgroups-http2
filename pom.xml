@@ -13,8 +13,8 @@
 		
 		<jgroups.version>4.0.23.Final</jgroups.version>
 		<slf4j.version>1.7.20</slf4j.version>
-		<jetty.version>9.4.26.v20200117</jetty.version>
-		<httpclient.version>0.8</httpclient.version>
+		<jetty.version>9.4.29.v20200521</jetty.version>
+		<httpclient.version>0.9-SNAPSHOT</httpclient.version>
 	</properties>
 
 	<name>${project.artifactId}</name>
